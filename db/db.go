@@ -53,5 +53,13 @@ func UserAlreadyExists(dbCollection *mongo.Collection, usersEmail string) (bool,
 	} else {
 		return false, err
 	}
+}
 
+func DeleteUser(dbCollection *mongo.Collection, usersEmail string) error {
+	_, err := dbCollection.DeleteOne(context.TODO(), bson.M{"email": usersEmail})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
