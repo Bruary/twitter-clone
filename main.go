@@ -22,6 +22,10 @@ type CreateUserRequest struct {
 	Email     string `json:"email"`
 }
 
+type DeleteUserRequest struct {
+	Email string `json:"email"`
+}
+
 type BaseResponse struct {
 	ResponseType string
 	Success      bool
@@ -39,6 +43,7 @@ func main() {
 	app := fiber.New()
 
 	app.Post("/createUser", CreateUser)
+	app.Delete("/deleteUser", DeleteUser)
 
 	app.Listen(":3000")
 }
@@ -93,5 +98,44 @@ func CreateUser(c *fiber.Ctx) error {
 	}
 
 	c.Context().Response.SetBody(output)
+	return nil
+}
+
+// Delete user from the user using the email
+func DeleteUser(c *fiber.Ctx) error {
+
+	c.Context().SetContentType("application/jsons")
+
+	var userEmail DeleteUserRequest
+	var resp BaseResponse
+
+	err := json.Unmarshal(c.Body(), &userEmail)
+	if err != nil {
+		c.SendString("Unmarshaling failed in DeleteUser endpoint.")
+		return err
+	}
+
+	err1 := db.DeleteUser(UsersCol, userEmail.Email)
+	if err1 != nil {
+
+		resp.ResponseType = "UNKNOWN_ERROR"
+		resp.Success = false
+		resp.Msg = "Failed to delete user from DB."
+
+	} else {
+
+		resp.ResponseType = "USER_DELETED"
+		resp.Success = true
+		resp.Msg = "User has been successfuly deleted from the db."
+
+	}
+
+	result, err2 := json.Marshal(resp)
+	if err2 != nil {
+		c.SendString("Marshaling failed in DeleteUser endpoint.")
+		return err2
+	}
+
+	c.Context().SetBody(result)
 	return nil
 }
