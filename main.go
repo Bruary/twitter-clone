@@ -9,11 +9,18 @@ package main
 
 import (
 	"encoding/json"
+	"time"
 
 	"github.com/Bruary/twitter-clone/db"
 	"github.com/gofiber/fiber/v2"
 	"go.mongodb.org/mongo-driver/mongo"
 )
+
+type BaseResponse struct {
+	ResponseType string
+	Success      bool
+	Msg          string
+}
 
 type CreateUserRequest struct {
 	FirstName string `json:"firstname"`
@@ -26,24 +33,41 @@ type DeleteUserRequest struct {
 	Email string `json:"email"`
 }
 
-type BaseResponse struct {
-	ResponseType string
-	Success      bool
-	Msg          string
+type MakeATweetRequest struct {
+	Email string `json:"email"`
+	Tweet string `json:"tweet"`
+}
+
+type TweetRequiredFields struct {
+	Email         string
+	Tweet         string
+	Metrics       TweetMetrics
+	CreatedAt     time.Time
+	LastUpdatedAt time.Time
+}
+
+type TweetMetrics struct {
+	Retweets_count   int
+	Likes_count      int
+	Comments_count   int
+	Characters_count int
 }
 
 var UsersCol *mongo.Collection
+var TweetsCol *mongo.Collection
 
 func main() {
 
 	dbConn := db.GetDBConn()
 
 	UsersCol = dbConn.Collection("Users")
+	TweetsCol = dbConn.Collection("Tweets")
 
 	app := fiber.New()
 
 	app.Post("/createUser", CreateUser)
 	app.Delete("/deleteUser", DeleteUser)
+	app.Post("/makeATweet", MakeATweet)
 
 	app.Listen(":3000")
 }
@@ -80,8 +104,8 @@ func CreateUser(c *fiber.Ctx) error {
 		return nil
 	}
 
-	// call the CreateUser func to add a new user to the db collection 'Users'
-	err1 := db.CreateUser(UsersCol, userInfo)
+	// call the InsertDocumentToDB func to add a new user to the db collection 'Users'
+	err1 := db.InsertDocumentToDB(UsersCol, userInfo)
 	if err1 != nil {
 		c.SendString("Inserting new user to the db failed.")
 		return err1
@@ -137,5 +161,54 @@ func DeleteUser(c *fiber.Ctx) error {
 	}
 
 	c.Context().SetBody(result)
+	return nil
+}
+
+// Saves a tweet to the db with all required information
+func MakeATweet(c *fiber.Ctx) error {
+
+	c.Context().SetContentType("application/jsons")
+
+	var tweetRequest MakeATweetRequest
+	var resp BaseResponse
+
+	err := json.Unmarshal(c.Body(), &tweetRequest)
+	if err != nil {
+		c.SendString("Marshaling failed in MakeATweet endpoint.")
+		return err
+	}
+
+	// Insert all the info that are required to be saved with the tweet
+	var tweetInfo = TweetRequiredFields{
+		Email: tweetRequest.Email,
+		Tweet: tweetRequest.Tweet,
+		Metrics: TweetMetrics{
+			Retweets_count:   0,
+			Likes_count:      0,
+			Comments_count:   0,
+			Characters_count: len(tweetRequest.Tweet),
+		},
+		CreatedAt:     time.Now(),
+		LastUpdatedAt: time.Now(),
+	}
+
+	err2 := db.InsertDocumentToDB(TweetsCol, tweetInfo)
+	if err2 != nil {
+		c.SendString("Inserting tweet to the db failed.")
+		return err2
+	}
+
+	resp.Success = true
+	resp.ResponseType = "TWEET_SAVED"
+	resp.Msg = "Tweet saved to db successfully."
+
+	result, err3 := json.Marshal(resp)
+	if err3 != nil {
+		c.SendString("Marshaling failed in MakeATweet endpoint.")
+		return err3
+	}
+
+	c.Context().SetBody(result)
+
 	return nil
 }
