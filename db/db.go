@@ -36,7 +36,7 @@ func GetDBConn() *mongo.Database {
 	return client.Database("twitter")
 }
 
-func CreateUser(dbCollection *mongo.Collection, dataToStore interface{}) error {
+func InsertDocumentToDB(dbCollection *mongo.Collection, dataToStore interface{}) error {
 
 	_, err := dbCollection.InsertOne(context.TODO(), dataToStore)
 	if err != nil {
