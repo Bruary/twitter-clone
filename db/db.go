@@ -55,6 +55,16 @@ func UserAlreadyExists(dbCollection *mongo.Collection, usersEmail string) (bool,
 	}
 }
 
+func GetDocumentFromDB(dbCollection *mongo.Collection, userEmail string) (*mongo.SingleResult, error) {
+	result := dbCollection.FindOne(context.TODO(), bson.M{"email": userEmail})
+	if result.Err() == mongo.ErrNoDocuments {
+		return result, result.Err()
+	}
+
+	return result, nil
+
+}
+
 func DeleteUser(dbCollection *mongo.Collection, usersEmail string) error {
 	_, err := dbCollection.DeleteOne(context.TODO(), bson.M{"email": usersEmail})
 	if err != nil {
