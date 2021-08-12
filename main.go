@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/Bruary/twitter-clone/db"
+	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/gofiber/fiber/v2"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -27,10 +28,21 @@ type CreateUserRequest struct {
 	LastName  string `json:"lastname"`
 	Age       int    `json:"age"`
 	Email     string `json:"email"`
+	Password  string `json:"password"`
 }
 
 type DeleteUserRequest struct {
 	Email string `json:"email"`
+}
+
+type SignInRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type SignInResponse struct {
+	Success bool
+	Token   string `json:"token"`
 }
 
 type MakeATweetRequest struct {
@@ -53,8 +65,15 @@ type TweetMetrics struct {
 	Characters_count int
 }
 
+type Claims struct {
+	Email string
+	jwt.StandardClaims
+}
+
 var UsersCol *mongo.Collection
 var TweetsCol *mongo.Collection
+
+var jwtKey = []byte("White_Yasmin")
 
 func main() {
 
@@ -68,6 +87,7 @@ func main() {
 	app.Post("/createUser", CreateUser)
 	app.Delete("/deleteUser", DeleteUser)
 	app.Post("/makeATweet", MakeATweet)
+	app.Post("/signin", SignIn)
 
 	app.Listen(":3000")
 }
@@ -162,6 +182,88 @@ func DeleteUser(c *fiber.Ctx) error {
 
 	c.Context().SetBody(result)
 	return nil
+}
+
+// validate user and then sign in if creds are correct (send back token)
+func SignIn(c *fiber.Ctx) error {
+
+	c.Context().SetContentType("application/jsons")
+
+	var req SignInRequest
+	var baseResp BaseResponse
+
+	err := json.Unmarshal(c.Body(), &req)
+	if err != nil {
+		c.SendString("Unmarshaling failed in SignIn endpoint.")
+		return err
+	}
+
+	// check if email exists in the db
+	doesUserExist, err2 := db.UserAlreadyExists(UsersCol, req.Email)
+	if err2 != nil {
+		c.SendString("Failed while searching for the User in SignIn endpoint.")
+		return err2
+	}
+
+	if !doesUserExist {
+		baseResp.Success = false
+		baseResp.ResponseType = "USER_DOES_NOT_EXIST"
+		baseResp.Msg = "Email is not registered with Twitter-Clone."
+
+		result, err3 := json.Marshal(baseResp)
+		if err3 != nil {
+			c.SendString("Marshaling failed in SignIn endpoint.")
+			return err3
+		}
+
+		c.Context().SetBody(result)
+		return nil
+	}
+
+	// Get the user document from the db to check the password later on
+	userDocument, err2_5 := db.GetDocumentFromDB(UsersCol, req.Email)
+	if err2_5 != nil {
+		c.SendString("Finding the user document in the DB failed in SignIn endpoint.")
+		return err2_5
+	}
+
+	//TODO: check if passowrd matches the one stored in DB and then HASH password and make changes
+	// Check if the request password matches the one stored in the DB
+	//if userDocument.Decode()
+
+	// create the claims that will be used in the JWT token
+	claims := &Claims{
+		Email: req.Email,
+		StandardClaims: jwt.StandardClaims{
+			ExpiresAt: time.Now().Add(5 * time.Minute).Unix(),
+		},
+	}
+
+	// declaring the token with the method used for signing along with the claims§
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+	// Create the JWT string
+	tokenString, err4 := token.SignedString(jwtKey)
+	if err4 != nil {
+		c.SendString("Creating the token failed in SignIn endpoint.")
+		return err4
+	}
+
+	// filing in the final response with the generated token string
+	resp := &SignInResponse{
+		Success: true,
+		Token:   tokenString,
+	}
+
+	resultMain, err5 := json.Marshal(resp)
+	if err5 != nil {
+		c.SendString("Marshaling #2 failed in SignIn endpoint.")
+		return err5
+	}
+
+	c.Context().SetBody(resultMain)
+	return nil
+
 }
 
 // Saves a tweet to the db with all required information
