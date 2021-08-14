@@ -8,12 +8,15 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"time"
 
 	"github.com/Bruary/twitter-clone/db"
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/gofiber/fiber/v2"
+	uuid "github.com/satori/go.uuid"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	bcrypt "golang.org/x/crypto/bcrypt"
 )
@@ -30,6 +33,26 @@ type CreateUserRequest struct {
 	Age       int    `json:"age"`
 	Email     string `json:"email"`
 	Password  string `json:"password"`
+}
+
+// User info to be saved in the db
+type UserRequiredFields struct {
+	UUID          string
+	FirstName     string
+	LastName      string
+	Age           int
+	Email         string
+	Password      string
+	Metrics       UserMetrics
+	CreatedAt     time.Time
+	LastUpdatedAt time.Time
+}
+
+type UserMetrics struct {
+	Followers_count      int
+	Total_tweets_count   int
+	Total_retweets_count int
+	Total_likes_count    int
 }
 
 type DeleteUserRequest struct {
@@ -51,7 +74,10 @@ type MakeATweetRequest struct {
 	Tweet string `json:"tweet"`
 }
 
+// Tweets info to be saved in the db
 type TweetRequiredFields struct {
+	UserUUID      string
+	TweetUUID     string
 	Email         string
 	Tweet         string
 	Metrics       TweetMetrics
@@ -98,17 +124,17 @@ func CreateUser(c *fiber.Ctx) error {
 
 	c.Context().SetContentType("application/json")
 
-	var userInfo CreateUserRequest
+	var userReceivedInfo CreateUserRequest
 	var resp BaseResponse
 
-	err := json.Unmarshal(c.Body(), &userInfo)
+	err := json.Unmarshal(c.Body(), &userReceivedInfo)
 	if err != nil {
 		c.SendString("Unmashaling failed in CreateUser endpoint.")
 		return err
 	}
 
 	// check is user already exist in db
-	doesUserExist, err10 := db.UserAlreadyExists(UsersCol, userInfo.Email)
+	doesUserExist, err10 := db.UserAlreadyExists(UsersCol, userReceivedInfo.Email)
 	if err10 == nil && doesUserExist {
 		resp.ResponseType = "USER_ALREADY_EXISTS"
 		resp.Success = false
@@ -125,14 +151,29 @@ func CreateUser(c *fiber.Ctx) error {
 		return nil
 	}
 
-	passwordHashedAndSalted, err10_5 := bcrypt.GenerateFromPassword([]byte(userInfo.Password), bcrypt.MinCost)
+	passwordHashedAndSalted, err10_5 := bcrypt.GenerateFromPassword([]byte(userReceivedInfo.Password), bcrypt.MinCost)
 	if err10_5 != nil {
 		c.SendString("Hashing password failed in SignUp endpoint.")
 		return err10_5
 	}
 
-	// change the password to the new generated hashed and salted pass before saving it in the db
-	userInfo.Password = string(passwordHashedAndSalted)
+	// Fill in the user details
+	userInfo := &UserRequiredFields{
+		UUID:      uuid.NewV4().String(),
+		FirstName: userReceivedInfo.FirstName,
+		LastName:  userReceivedInfo.LastName,
+		Age:       userReceivedInfo.Age,
+		Email:     userReceivedInfo.Email,
+		Password:  string(passwordHashedAndSalted),
+		Metrics: UserMetrics{
+			Followers_count:      0,
+			Total_tweets_count:   0,
+			Total_retweets_count: 0,
+			Total_likes_count:    0,
+		},
+		CreatedAt:     time.Now(),
+		LastUpdatedAt: time.Now(),
+	}
 
 	// call the InsertDocumentToDB func to add a new user to the db collection 'Users'
 	err1 := db.InsertDocumentToDB(UsersCol, userInfo)
@@ -238,7 +279,7 @@ func SignIn(c *fiber.Ctx) error {
 	}
 
 	// Check if the request password matches the one stored in the DB
-	var userDocumentDecoded CreateUserRequest
+	var userDocumentDecoded UserRequiredFields
 
 	err2_6 := userDocument.Decode(&userDocumentDecoded)
 	if err2_6 != nil {
@@ -315,13 +356,16 @@ func MakeATweet(c *fiber.Ctx) error {
 	}
 
 	// Check if user exists
-	doesUserExist, err1_5 := db.UserAlreadyExists(UsersCol, tweetRequest.Email)
+	userDoc, err1_5 := db.GetDocumentFromDB(UsersCol, tweetRequest.Email)
 	if err1_5 != nil {
 		c.SendString("Failed while finding user in db.")
 		return err1_5
 	}
 
-	if !doesUserExist {
+	var user UserRequiredFields
+
+	err1_55 := userDoc.Decode(&user)
+	if err1_55 != nil {
 		resp.Success = false
 		resp.ResponseType = "USER_DOES_NOT_EXIST"
 		resp.Msg = "Invalid email address."
@@ -338,8 +382,10 @@ func MakeATweet(c *fiber.Ctx) error {
 
 	// Insert all the info that are required to be saved with the tweet
 	var tweetInfo = TweetRequiredFields{
-		Email: tweetRequest.Email,
-		Tweet: tweetRequest.Tweet,
+		UserUUID:  user.UUID,
+		TweetUUID: uuid.NewV4().String(),
+		Email:     tweetRequest.Email,
+		Tweet:     tweetRequest.Tweet,
 		Metrics: TweetMetrics{
 			Retweets_count:   0,
 			Likes_count:      0,
@@ -364,6 +410,13 @@ func MakeATweet(c *fiber.Ctx) error {
 	if err3 != nil {
 		c.SendString("Marshaling failed in MakeATweet endpoint.")
 		return err3
+	}
+
+	//update the tweet count on the users document in the db
+	updateResult := UsersCol.FindOneAndUpdate(context.TODO(), bson.M{"uuid": user.UUID}, bson.M{"$set": bson.M{"metrics.total_tweets_count": user.Metrics.Total_tweets_count + 1}})
+	if updateResult.Err() == mongo.ErrNoDocuments {
+		c.SendString("Failed to update number of tweets for a user in MakeATweet endpoint.")
+		return updateResult.Err()
 	}
 
 	c.Context().SetBody(result)
