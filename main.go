@@ -218,7 +218,7 @@ func SignIn(c *fiber.Ctx) error {
 	if !doesUserExist {
 		baseResp.Success = false
 		baseResp.ResponseType = "USER_DOES_NOT_EXIST"
-		baseResp.Msg = "Email is not registered with Twitter-Clone."
+		baseResp.Msg = "Invalid email or password."
 
 		result, err3 := json.Marshal(baseResp)
 		if err3 != nil {
@@ -252,7 +252,7 @@ func SignIn(c *fiber.Ctx) error {
 	if !isPasswordCorrect {
 		baseResp.Success = false
 		baseResp.ResponseType = "INVALID_CREDENTIALS"
-		baseResp.Msg = "Password is invalid."
+		baseResp.Msg = "Invalid email or password."
 
 		result, err3_2 := json.Marshal(baseResp)
 		if err3_2 != nil {
@@ -298,7 +298,6 @@ func SignIn(c *fiber.Ctx) error {
 
 	c.Context().SetBody(resultMain)
 	return nil
-
 }
 
 // Saves a tweet to the db with all required information
@@ -313,6 +312,28 @@ func MakeATweet(c *fiber.Ctx) error {
 	if err != nil {
 		c.SendString("Marshaling failed in MakeATweet endpoint.")
 		return err
+	}
+
+	// Check if user exists
+	doesUserExist, err1_5 := db.UserAlreadyExists(UsersCol, tweetRequest.Email)
+	if err1_5 != nil {
+		c.SendString("Failed while finding user in db.")
+		return err1_5
+	}
+
+	if !doesUserExist {
+		resp.Success = false
+		resp.ResponseType = "USER_DOES_NOT_EXIST"
+		resp.Msg = "Invalid email address."
+
+		result, err1_6 := json.Marshal(resp)
+		if err1_6 != nil {
+			c.SendString("Marshaling failed in MakeATweet endpoint.")
+			return err1_6
+		}
+
+		c.Context().SetBody(result)
+		return nil
 	}
 
 	// Insert all the info that are required to be saved with the tweet
