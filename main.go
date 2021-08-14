@@ -15,6 +15,7 @@ import (
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/gofiber/fiber/v2"
 	"go.mongodb.org/mongo-driver/mongo"
+	bcrypt "golang.org/x/crypto/bcrypt"
 )
 
 type BaseResponse struct {
@@ -124,6 +125,15 @@ func CreateUser(c *fiber.Ctx) error {
 		return nil
 	}
 
+	passwordHashedAndSalted, err10_5 := bcrypt.GenerateFromPassword([]byte(userInfo.Password), bcrypt.MinCost)
+	if err10_5 != nil {
+		c.SendString("Hashing password failed in SignUp endpoint.")
+		return err10_5
+	}
+
+	// change the password to the new generated hashed and salted pass before saving it in the db
+	userInfo.Password = string(passwordHashedAndSalted)
+
 	// call the InsertDocumentToDB func to add a new user to the db collection 'Users'
 	err1 := db.InsertDocumentToDB(UsersCol, userInfo)
 	if err1 != nil {
@@ -227,9 +237,34 @@ func SignIn(c *fiber.Ctx) error {
 		return err2_5
 	}
 
-	//TODO: check if passowrd matches the one stored in DB and then HASH password and make changes
 	// Check if the request password matches the one stored in the DB
-	//if userDocument.Decode()
+	var userDocumentDecoded CreateUserRequest
+
+	err2_6 := userDocument.Decode(&userDocumentDecoded)
+	if err2_6 != nil {
+		c.SendString("Decoding failed in SignIn endpoint.")
+		return err2_6
+	}
+
+	// Check if the received password with hashing matches the one saved in the db
+	isPasswordCorrect := DoPasswordsMatch([]byte(req.Password), userDocumentDecoded.Password)
+
+	if !isPasswordCorrect {
+		baseResp.Success = false
+		baseResp.ResponseType = "INVALID_CREDENTIALS"
+		baseResp.Msg = "Password is invalid."
+
+		result, err3_2 := json.Marshal(baseResp)
+		if err3_2 != nil {
+			c.SendString("Marshaling failed in SignIn endpoint.")
+			return err3_2
+		}
+
+		c.Context().SetBody(result)
+		return nil
+	}
+
+	// If password matches then do the following
 
 	// create the claims that will be used in the JWT token
 	claims := &Claims{
@@ -313,4 +348,9 @@ func MakeATweet(c *fiber.Ctx) error {
 	c.Context().SetBody(result)
 
 	return nil
+}
+
+func DoPasswordsMatch(password []byte, savedPassword string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(savedPassword), password)
+	return err == nil
 }
