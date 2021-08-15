@@ -129,9 +129,8 @@ func CreateUser(c *fiber.Ctx) error {
 	var userReceivedInfo CreateUserRequest
 	var resp BaseResponse
 
-	err := json.Unmarshal(c.Body(), &userReceivedInfo)
+	err := UnmarshalRequest(&userReceivedInfo, c)
 	if err != nil {
-		c.SendString("Unmashaling failed in CreateUser endpoint.")
 		return err
 	}
 
@@ -201,9 +200,8 @@ func DeleteUser(c *fiber.Ctx) error {
 	var userEmail DeleteUserRequest
 	var resp BaseResponse
 
-	err := json.Unmarshal(c.Body(), &userEmail)
+	err := UnmarshalRequest(&userEmail, c)
 	if err != nil {
-		c.SendString("Unmarshaling failed in DeleteUser endpoint.")
 		return err
 	}
 
@@ -238,9 +236,8 @@ func SignIn(c *fiber.Ctx) error {
 	var req SignInRequest
 	var baseResp BaseResponse
 
-	err := json.Unmarshal(c.Body(), &req)
+	err := UnmarshalRequest(&req, c)
 	if err != nil {
-		c.SendString("Unmarshaling failed in SignIn endpoint.")
 		return err
 	}
 
