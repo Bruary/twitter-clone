@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/Bruary/twitter-clone/db"
+	"github.com/Bruary/twitter-clone/validate"
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/gofiber/fiber/v2"
 	uuid "github.com/satori/go.uuid"
@@ -72,6 +73,7 @@ type SignInResponse struct {
 type MakeATweetRequest struct {
 	Email string `json:"email"`
 	Tweet string `json:"tweet"`
+	Token string `json:"token"`
 }
 
 // Tweets info to be saved in the db
@@ -140,13 +142,10 @@ func CreateUser(c *fiber.Ctx) error {
 		resp.Success = false
 		resp.Msg = "User's email already exists."
 
-		output01, err20 := json.Marshal(&resp)
+		err20 := MarshalResponseAndSetBody(resp, c)
 		if err20 != nil {
-			c.SendString("Mashaling failed in CreateUser endpoint.")
 			return err20
 		}
-
-		c.Context().Response.SetBody(output01)
 
 		return nil
 	}
@@ -186,13 +185,11 @@ func CreateUser(c *fiber.Ctx) error {
 	resp.Success = true
 	resp.Msg = "New user was added and saved to the db."
 
-	output, err2 := json.Marshal(&resp)
+	err2 := MarshalResponseAndSetBody(resp, c)
 	if err2 != nil {
-		c.SendString("Mashaling failed in CreateUser endpoint.")
-		return err
+		return err2
 	}
 
-	c.Context().Response.SetBody(output)
 	return nil
 }
 
@@ -225,13 +222,11 @@ func DeleteUser(c *fiber.Ctx) error {
 
 	}
 
-	result, err2 := json.Marshal(resp)
+	err2 := MarshalResponseAndSetBody(resp, c)
 	if err2 != nil {
-		c.SendString("Marshaling failed in DeleteUser endpoint.")
 		return err2
 	}
 
-	c.Context().SetBody(result)
 	return nil
 }
 
@@ -261,13 +256,11 @@ func SignIn(c *fiber.Ctx) error {
 		baseResp.ResponseType = "USER_DOES_NOT_EXIST"
 		baseResp.Msg = "Invalid email or password."
 
-		result, err3 := json.Marshal(baseResp)
+		err3 := MarshalResponseAndSetBody(baseResp, c)
 		if err3 != nil {
-			c.SendString("Marshaling failed in SignIn endpoint.")
 			return err3
 		}
 
-		c.Context().SetBody(result)
 		return nil
 	}
 
@@ -295,13 +288,11 @@ func SignIn(c *fiber.Ctx) error {
 		baseResp.ResponseType = "INVALID_CREDENTIALS"
 		baseResp.Msg = "Invalid email or password."
 
-		result, err3_2 := json.Marshal(baseResp)
+		err3_2 := MarshalResponseAndSetBody(baseResp, c)
 		if err3_2 != nil {
-			c.SendString("Marshaling failed in SignIn endpoint.")
 			return err3_2
 		}
 
-		c.Context().SetBody(result)
 		return nil
 	}
 
@@ -331,13 +322,11 @@ func SignIn(c *fiber.Ctx) error {
 		Token:   tokenString,
 	}
 
-	resultMain, err5 := json.Marshal(resp)
+	err5 := MarshalResponseAndSetBody(resp, c)
 	if err5 != nil {
-		c.SendString("Marshaling #2 failed in SignIn endpoint.")
 		return err5
 	}
 
-	c.Context().SetBody(resultMain)
 	return nil
 }
 
@@ -349,10 +338,61 @@ func MakeATweet(c *fiber.Ctx) error {
 	var tweetRequest MakeATweetRequest
 	var resp BaseResponse
 
-	err := json.Unmarshal(c.Body(), &tweetRequest)
+	err := UnmarshalRequest(&tweetRequest, c)
 	if err != nil {
-		c.SendString("Marshaling failed in MakeATweet endpoint.")
 		return err
+	}
+
+	// Request validation
+	tokenValueEmpty := validate.IsStringEmpty(tweetRequest.Token)
+	if tokenValueEmpty {
+		resp = SetRequestErrorResponse("token")
+		c.Status(fiber.ErrBadRequest.Code)
+
+		err := MarshalResponseAndSetBody(resp, c)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+
+	emailValueEmpty := validate.IsStringEmpty(tweetRequest.Email)
+	if emailValueEmpty {
+		resp = SetRequestErrorResponse("email")
+		c.Status(fiber.ErrBadRequest.Code)
+
+		err := MarshalResponseAndSetBody(resp, c)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+
+	tweetValueEmpty := validate.IsStringEmpty(tweetRequest.Tweet)
+	if tweetValueEmpty {
+		resp = SetRequestErrorResponse("tweet")
+		c.Status(fiber.ErrBadRequest.Code)
+
+		err := MarshalResponseAndSetBody(resp, c)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+
+	// Validate token
+	validToken := IsTokenValid(tweetRequest.Token)
+	if !validToken {
+		resp.Success = false
+		resp.ResponseType = "INVALID_TOKEN"
+		resp.Msg = "Invalid token."
+
+		err1_4 := MarshalResponseAndSetBody(resp, c)
+		if err1_4 != nil {
+			return err1_4
+		}
+
+		return nil
 	}
 
 	// Check if user exists
@@ -370,13 +410,11 @@ func MakeATweet(c *fiber.Ctx) error {
 		resp.ResponseType = "USER_DOES_NOT_EXIST"
 		resp.Msg = "Invalid email address."
 
-		result, err1_6 := json.Marshal(resp)
+		err1_6 := MarshalResponseAndSetBody(resp, c)
 		if err1_6 != nil {
-			c.SendString("Marshaling failed in MakeATweet endpoint.")
 			return err1_6
 		}
 
-		c.Context().SetBody(result)
 		return nil
 	}
 
@@ -406,9 +444,8 @@ func MakeATweet(c *fiber.Ctx) error {
 	resp.ResponseType = "TWEET_SAVED"
 	resp.Msg = "Tweet saved to db successfully."
 
-	result, err3 := json.Marshal(resp)
+	err3 := MarshalResponseAndSetBody(resp, c)
 	if err3 != nil {
-		c.SendString("Marshaling failed in MakeATweet endpoint.")
 		return err3
 	}
 
@@ -419,12 +456,48 @@ func MakeATweet(c *fiber.Ctx) error {
 		return updateResult.Err()
 	}
 
-	c.Context().SetBody(result)
-
 	return nil
 }
 
 func DoPasswordsMatch(password []byte, savedPassword string) bool {
 	err := bcrypt.CompareHashAndPassword([]byte(savedPassword), password)
 	return err == nil
+}
+
+func IsTokenValid(tokenString string) bool {
+	claims := &Claims{}
+	token, _ := jwt.ParseWithClaims(tokenString, claims, func(t *jwt.Token) (interface{}, error) {
+		return jwtKey, nil
+	})
+	return token.Valid
+}
+
+func MarshalResponseAndSetBody(resp interface{}, c *fiber.Ctx) error {
+	result, err := json.Marshal(resp)
+	if err != nil {
+		c.SendString("Marshaling failed.")
+		return err
+	}
+
+	c.Context().SetBody(result)
+	return nil
+}
+
+func UnmarshalRequest(reqStruct interface{}, c *fiber.Ctx) error {
+
+	err := json.Unmarshal(c.Body(), reqStruct)
+	if err != nil {
+		c.SendString("Unmarshaling failed.")
+		return err
+	}
+
+	return nil
+}
+
+func SetRequestErrorResponse(fieldName string) BaseResponse {
+	return BaseResponse{
+		Success:      false,
+		ResponseType: "FIELD_MISSING",
+		Msg:          "Field " + "'" + fieldName + "'" + " is missing, or empty",
+	}
 }
