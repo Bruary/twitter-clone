@@ -134,6 +134,67 @@ func CreateUser(c *fiber.Ctx) error {
 		return err
 	}
 
+	// Validate request
+	firstNameEmpty := validate.IsStringEmpty(userReceivedInfo.FirstName)
+	if firstNameEmpty {
+		resp = SetMissingFieldResponse("firstname")
+		c.Status(fiber.ErrBadRequest.Code)
+
+		err := MarshalResponseAndSetBody(resp, c)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+
+	lastNameEmpty := validate.IsStringEmpty(userReceivedInfo.LastName)
+	if lastNameEmpty {
+		resp = SetMissingFieldResponse("lastname")
+		c.Status(fiber.ErrBadRequest.Code)
+
+		err := MarshalResponseAndSetBody(resp, c)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+
+	emailEmpty := validate.IsStringEmpty(userReceivedInfo.Email)
+	if emailEmpty {
+		resp = SetMissingFieldResponse("email")
+		c.Status(fiber.ErrBadRequest.Code)
+
+		err := MarshalResponseAndSetBody(resp, c)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+
+	passwordValid := validate.IsPasswordLengthCorrect(userReceivedInfo.Password)
+	if !passwordValid {
+		resp = SetCriteriaErrorResponse("password")
+		c.Status(fiber.ErrBadRequest.Code)
+
+		err := MarshalResponseAndSetBody(resp, c)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+
+	ageValid := validate.IsAge12AndAbove(userReceivedInfo.Age)
+	if !ageValid {
+		resp = SetCriteriaErrorResponse("age")
+		c.Status(fiber.ErrBadRequest.Code)
+
+		err := MarshalResponseAndSetBody(resp, c)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+
 	// check is user already exist in db
 	doesUserExist, err10 := db.UserAlreadyExists(UsersCol, userReceivedInfo.Email)
 	if err10 == nil && doesUserExist {
@@ -205,6 +266,19 @@ func DeleteUser(c *fiber.Ctx) error {
 		return err
 	}
 
+	// Validate request
+	emailEmpty := validate.IsStringEmpty(userEmail.Email)
+	if emailEmpty {
+		resp = SetMissingFieldResponse("email")
+		c.Status(fiber.ErrBadRequest.Code)
+
+		err := MarshalResponseAndSetBody(resp, c)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+
 	err1 := db.DeleteUser(UsersCol, userEmail.Email)
 	if err1 != nil {
 
@@ -239,6 +313,31 @@ func SignIn(c *fiber.Ctx) error {
 	err := UnmarshalRequest(&req, c)
 	if err != nil {
 		return err
+	}
+
+	// Validate request
+	emailValueEmpty := validate.IsStringEmpty(req.Email)
+	if emailValueEmpty {
+		baseResp = SetMissingFieldResponse("email")
+		c.Status(fiber.ErrBadRequest.Code)
+
+		err := MarshalResponseAndSetBody(baseResp, c)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+
+	passwordEmpty := validate.IsStringEmpty(req.Password)
+	if passwordEmpty {
+		baseResp = SetMissingFieldResponse("password")
+		c.Status(fiber.ErrBadRequest.Code)
+
+		err := MarshalResponseAndSetBody(baseResp, c)
+		if err != nil {
+			return err
+		}
+		return nil
 	}
 
 	// check if email exists in the db
@@ -343,7 +442,7 @@ func MakeATweet(c *fiber.Ctx) error {
 	// Request validation
 	tokenValueEmpty := validate.IsStringEmpty(tweetRequest.Token)
 	if tokenValueEmpty {
-		resp = SetRequestErrorResponse("token")
+		resp = SetMissingFieldResponse("token")
 		c.Status(fiber.ErrBadRequest.Code)
 
 		err := MarshalResponseAndSetBody(resp, c)
@@ -355,7 +454,7 @@ func MakeATweet(c *fiber.Ctx) error {
 
 	emailValueEmpty := validate.IsStringEmpty(tweetRequest.Email)
 	if emailValueEmpty {
-		resp = SetRequestErrorResponse("email")
+		resp = SetMissingFieldResponse("email")
 		c.Status(fiber.ErrBadRequest.Code)
 
 		err := MarshalResponseAndSetBody(resp, c)
@@ -367,7 +466,7 @@ func MakeATweet(c *fiber.Ctx) error {
 
 	tweetValueEmpty := validate.IsStringEmpty(tweetRequest.Tweet)
 	if tweetValueEmpty {
-		resp = SetRequestErrorResponse("tweet")
+		resp = SetMissingFieldResponse("tweet")
 		c.Status(fiber.ErrBadRequest.Code)
 
 		err := MarshalResponseAndSetBody(resp, c)
@@ -491,10 +590,37 @@ func UnmarshalRequest(reqStruct interface{}, c *fiber.Ctx) error {
 	return nil
 }
 
-func SetRequestErrorResponse(fieldName string) BaseResponse {
+func SetMissingFieldResponse(fieldName string) BaseResponse {
 	return BaseResponse{
 		Success:      false,
 		ResponseType: "FIELD_MISSING",
-		Msg:          "Field " + "'" + fieldName + "'" + " is missing, or empty",
+		Msg:          "Field " + "'" + fieldName + "'" + " is missing, or empty.",
+	}
+}
+
+func SetCriteriaErrorResponse(fieldName string) BaseResponse {
+
+	if fieldName == "age" {
+
+		return BaseResponse{
+			Success:      false,
+			ResponseType: "FIELD_ERROR",
+			Msg:          "Age should be 12 and above years old to create an account.",
+		}
+
+	} else if fieldName == "password" {
+
+		return BaseResponse{
+			Success:      false,
+			ResponseType: "FIELD_ERROR",
+			Msg:          "Password should atleast have 8 characters.",
+		}
+
+	}
+
+	return BaseResponse{
+		Success:      false,
+		ResponseType: "UNKNOWN_ERROR",
+		Msg:          "Can't find error type, SetCriteriaErrorResponse.",
 	}
 }
