@@ -13,91 +13,16 @@ import (
 	"time"
 
 	"github.com/Bruary/twitter-clone/db"
+	"github.com/Bruary/twitter-clone/models"
 	"github.com/Bruary/twitter-clone/validate"
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 	uuid "github.com/satori/go.uuid"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	bcrypt "golang.org/x/crypto/bcrypt"
 )
-
-type BaseResponse struct {
-	ResponseType string
-	Success      bool
-	Msg          string
-}
-
-type CreateUserRequest struct {
-	FirstName string `json:"firstname"`
-	LastName  string `json:"lastname"`
-	Age       int    `json:"age"`
-	Email     string `json:"email"`
-	Password  string `json:"password"`
-}
-
-// User info to be saved in the db
-type UserRequiredFields struct {
-	UUID          string
-	FirstName     string
-	LastName      string
-	Age           int
-	Email         string
-	Password      string
-	Metrics       UserMetrics
-	CreatedAt     time.Time
-	LastUpdatedAt time.Time
-}
-
-type UserMetrics struct {
-	Followers_count      int
-	Total_tweets_count   int
-	Total_retweets_count int
-	Total_likes_count    int
-}
-
-type DeleteUserRequest struct {
-	Email string `json:"email"`
-}
-
-type SignInRequest struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
-}
-
-type SignInResponse struct {
-	Success bool
-	Token   string `json:"token"`
-}
-
-type MakeATweetRequest struct {
-	Email string `json:"email"`
-	Tweet string `json:"tweet"`
-	Token string `json:"token"`
-}
-
-// Tweets info to be saved in the db
-type TweetRequiredFields struct {
-	UserUUID      string
-	TweetUUID     string
-	Email         string
-	Tweet         string
-	Metrics       TweetMetrics
-	CreatedAt     time.Time
-	LastUpdatedAt time.Time
-}
-
-type TweetMetrics struct {
-	Retweets_count   int
-	Likes_count      int
-	Comments_count   int
-	Characters_count int
-}
-
-type Claims struct {
-	Email string
-	jwt.StandardClaims
-}
 
 var UsersCol *mongo.Collection
 var TweetsCol *mongo.Collection
@@ -113,12 +38,15 @@ func main() {
 
 	app := fiber.New()
 
+	app.Use(cors.New())
+
 	app.Post("/createUser", CreateUser)
 	app.Delete("/deleteUser", DeleteUser)
 	app.Post("/makeATweet", MakeATweet)
+	app.Post("/getTweets", GetTweets)
 	app.Post("/signin", SignIn)
 
-	app.Listen(":3000")
+	app.Listen(":4000")
 }
 
 // Creates a new user and adds it to the db
@@ -126,8 +54,8 @@ func CreateUser(c *fiber.Ctx) error {
 
 	c.Context().SetContentType("application/json")
 
-	var userReceivedInfo CreateUserRequest
-	var resp BaseResponse
+	var userReceivedInfo models.CreateUserRequest
+	var resp models.BaseResponse
 
 	err := UnmarshalRequest(&userReceivedInfo, c)
 	if err != nil {
@@ -217,21 +145,21 @@ func CreateUser(c *fiber.Ctx) error {
 	}
 
 	// Fill in the user details
-	userInfo := &UserRequiredFields{
+	userInfo := &models.UserInfo{
 		UUID:      uuid.NewV4().String(),
 		FirstName: userReceivedInfo.FirstName,
 		LastName:  userReceivedInfo.LastName,
 		Age:       userReceivedInfo.Age,
 		Email:     userReceivedInfo.Email,
 		Password:  string(passwordHashedAndSalted),
-		Metrics: UserMetrics{
+		Metrics: models.UserMetrics{
 			Followers_count:      0,
 			Total_tweets_count:   0,
 			Total_retweets_count: 0,
 			Total_likes_count:    0,
 		},
-		CreatedAt:     time.Now(),
-		LastUpdatedAt: time.Now(),
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
 	}
 
 	// call the InsertDocumentToDB func to add a new user to the db collection 'Users'
@@ -258,8 +186,8 @@ func DeleteUser(c *fiber.Ctx) error {
 
 	c.Context().SetContentType("application/jsons")
 
-	var userEmail DeleteUserRequest
-	var resp BaseResponse
+	var userEmail models.DeleteUserRequest
+	var resp models.BaseResponse
 
 	err := UnmarshalRequest(&userEmail, c)
 	if err != nil {
@@ -307,8 +235,8 @@ func SignIn(c *fiber.Ctx) error {
 
 	c.Context().SetContentType("application/jsons")
 
-	var req SignInRequest
-	var baseResp BaseResponse
+	var req models.SignInRequest
+	var baseResp models.BaseResponse
 
 	err := UnmarshalRequest(&req, c)
 	if err != nil {
@@ -368,7 +296,7 @@ func SignIn(c *fiber.Ctx) error {
 	}
 
 	// Check if the request password matches the one stored in the DB
-	var userDocumentDecoded UserRequiredFields
+	var userDocumentDecoded models.UserInfo
 
 	err2_6 := userDocument.Decode(&userDocumentDecoded)
 	if err2_6 != nil {
@@ -395,8 +323,8 @@ func SignIn(c *fiber.Ctx) error {
 	// If password matches then do the following
 
 	// create the claims that will be used in the JWT token
-	claims := &Claims{
-		Email: req.Email,
+	claims := &models.Claims{
+		UserUUID: userDocumentDecoded.UUID,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(5 * time.Minute).Unix(),
 		},
@@ -413,7 +341,7 @@ func SignIn(c *fiber.Ctx) error {
 	}
 
 	// filing in the final response with the generated token string
-	resp := &SignInResponse{
+	resp := &models.SignInResponse{
 		Success: true,
 		Token:   tokenString,
 	}
@@ -431,8 +359,8 @@ func MakeATweet(c *fiber.Ctx) error {
 
 	c.Context().SetContentType("application/jsons")
 
-	var tweetRequest MakeATweetRequest
-	var resp BaseResponse
+	var tweetRequest models.MakeATweetRequest
+	var resp models.BaseResponse
 
 	err := UnmarshalRequest(&tweetRequest, c)
 	if err != nil {
@@ -498,7 +426,7 @@ func MakeATweet(c *fiber.Ctx) error {
 		return err1_5
 	}
 
-	var user UserRequiredFields
+	var user models.UserInfo
 
 	err1_55 := userDoc.Decode(&user)
 	if err1_55 != nil {
@@ -515,19 +443,19 @@ func MakeATweet(c *fiber.Ctx) error {
 	}
 
 	// Insert all the info that are required to be saved with the tweet
-	var tweetInfo = TweetRequiredFields{
+	var tweetInfo = models.Tweet{
 		UserUUID:  user.UUID,
 		TweetUUID: uuid.NewV4().String(),
 		Email:     tweetRequest.Email,
 		Tweet:     tweetRequest.Tweet,
-		Metrics: TweetMetrics{
+		Metrics: models.TweetMetrics{
 			Retweets_count:   0,
 			Likes_count:      0,
 			Comments_count:   0,
 			Characters_count: len(tweetRequest.Tweet),
 		},
-		CreatedAt:     time.Now(),
-		LastUpdatedAt: time.Now(),
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
 	}
 
 	err2 := db.InsertDocumentToDB(TweetsCol, tweetInfo)
@@ -555,13 +483,82 @@ func MakeATweet(c *fiber.Ctx) error {
 	return nil
 }
 
+func GetTweets(c *fiber.Ctx) error {
+
+	c.Context().SetContentType("applications/json")
+
+	var req models.GetTweetsRequest
+	var baseResp models.BaseResponse
+
+	err := UnmarshalRequest(&req, c)
+	if err != nil {
+		return err
+	}
+
+	// Request validation
+	tokenValueEmpty := validate.IsStringEmpty(req.Token)
+	if tokenValueEmpty {
+		baseResp = SetMissingFieldResponse("token")
+		c.Status(fiber.ErrBadRequest.Code)
+
+		err := MarshalResponseAndSetBody(baseResp, c)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+
+	uuidValueEmpty := validate.IsStringEmpty(req.UserUUID)
+	if uuidValueEmpty {
+		baseResp = SetMissingFieldResponse("user_uuid")
+		c.Status(fiber.ErrBadRequest.Code)
+
+		err := MarshalResponseAndSetBody(baseResp, c)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+
+	validToken := IsTokenValid(req.Token)
+	if !validToken {
+		baseResp.Success = false
+		baseResp.ResponseType = "INVALID_TOKEN"
+		baseResp.Msg = "Invalid token."
+
+		err2 := MarshalResponseAndSetBody(baseResp, c)
+		if err2 != nil {
+			return err2
+		}
+
+		return nil
+	}
+
+	tweets, err12 := db.GetAllMatchingDocuments(TweetsCol, req.UserUUID)
+	if err12 != nil {
+		return err12
+	}
+
+	resp := &models.GetTweetsResponse{
+		Success: true,
+		Tweets:  tweets,
+	}
+
+	err122 := MarshalResponseAndSetBody(resp, c)
+	if err122 != nil {
+		return err122
+	}
+
+	return nil
+}
+
 func DoPasswordsMatch(password []byte, savedPassword string) bool {
 	err := bcrypt.CompareHashAndPassword([]byte(savedPassword), password)
 	return err == nil
 }
 
 func IsTokenValid(tokenString string) bool {
-	claims := &Claims{}
+	claims := &models.Claims{}
 	token, _ := jwt.ParseWithClaims(tokenString, claims, func(t *jwt.Token) (interface{}, error) {
 		return jwtKey, nil
 	})
@@ -590,19 +587,19 @@ func UnmarshalRequest(reqStruct interface{}, c *fiber.Ctx) error {
 	return nil
 }
 
-func SetMissingFieldResponse(fieldName string) BaseResponse {
-	return BaseResponse{
+func SetMissingFieldResponse(fieldName string) models.BaseResponse {
+	return models.BaseResponse{
 		Success:      false,
 		ResponseType: "FIELD_MISSING",
 		Msg:          "Field " + "'" + fieldName + "'" + " is missing, or empty.",
 	}
 }
 
-func SetCriteriaErrorResponse(fieldName string) BaseResponse {
+func SetCriteriaErrorResponse(fieldName string) models.BaseResponse {
 
 	if fieldName == "age" {
 
-		return BaseResponse{
+		return models.BaseResponse{
 			Success:      false,
 			ResponseType: "FIELD_ERROR",
 			Msg:          "Age should be 12 and above years old to create an account.",
@@ -610,7 +607,7 @@ func SetCriteriaErrorResponse(fieldName string) BaseResponse {
 
 	} else if fieldName == "password" {
 
-		return BaseResponse{
+		return models.BaseResponse{
 			Success:      false,
 			ResponseType: "FIELD_ERROR",
 			Msg:          "Password should atleast have 8 characters.",
@@ -618,7 +615,7 @@ func SetCriteriaErrorResponse(fieldName string) BaseResponse {
 
 	}
 
-	return BaseResponse{
+	return models.BaseResponse{
 		Success:      false,
 		ResponseType: "UNKNOWN_ERROR",
 		Msg:          "Can't find error type, SetCriteriaErrorResponse.",
