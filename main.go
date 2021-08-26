@@ -186,18 +186,17 @@ func DeleteUser(c *fiber.Ctx) error {
 
 	c.Context().SetContentType("application/jsons")
 
-	var userEmail models.DeleteUserRequest
+	var req models.DeleteUserRequest
 	var resp models.BaseResponse
 
-	err := UnmarshalRequest(&userEmail, c)
+	err := UnmarshalRequest(&req, c)
 	if err != nil {
 		return err
 	}
 
-	// Validate request
-	emailEmpty := validate.IsStringEmpty(userEmail.Email)
-	if emailEmpty {
-		resp = SetMissingFieldResponse("email")
+	tokenEmptyValue := validate.IsStringEmpty(req.Token)
+	if tokenEmptyValue {
+		resp = SetMissingFieldResponse("token")
 		c.Status(fiber.ErrBadRequest.Code)
 
 		err := MarshalResponseAndSetBody(resp, c)
@@ -207,7 +206,26 @@ func DeleteUser(c *fiber.Ctx) error {
 		return nil
 	}
 
-	err1 := db.DeleteUser(UsersCol, userEmail.Email)
+	// Validate token
+	validToken := IsTokenValid(req.Token)
+	if !validToken {
+		resp.Success = false
+		resp.ResponseType = "INVALID_TOKEN"
+		resp.Msg = "Invalid token."
+
+		c.Status(fiber.StatusUnauthorized)
+		err2 := MarshalResponseAndSetBody(resp, c)
+		if err2 != nil {
+			return err2
+		}
+
+		return nil
+	}
+
+	// Extract the JWT claims
+	tokenClaims := GetJWTclaims(req.Token)
+
+	err1 := db.DeleteUser(UsersCol, tokenClaims.UserUUID)
 	if err1 != nil {
 
 		resp.ResponseType = "UNKNOWN_ERROR"
@@ -289,7 +307,7 @@ func SignIn(c *fiber.Ctx) error {
 	}
 
 	// Get the user document from the db to check the password later on
-	userDocument, err2_5 := db.GetDocumentFromDB(UsersCol, req.Email)
+	userDocument, err2_5 := db.GetDocFromDBUsingEmail(UsersCol, req.Email)
 	if err2_5 != nil {
 		c.SendString("Finding the user document in the DB failed in SignIn endpoint.")
 		return err2_5
@@ -380,18 +398,6 @@ func MakeATweet(c *fiber.Ctx) error {
 		return nil
 	}
 
-	emailValueEmpty := validate.IsStringEmpty(tweetRequest.Email)
-	if emailValueEmpty {
-		resp = SetMissingFieldResponse("email")
-		c.Status(fiber.ErrBadRequest.Code)
-
-		err := MarshalResponseAndSetBody(resp, c)
-		if err != nil {
-			return err
-		}
-		return nil
-	}
-
 	tweetValueEmpty := validate.IsStringEmpty(tweetRequest.Tweet)
 	if tweetValueEmpty {
 		resp = SetMissingFieldResponse("tweet")
@@ -411,6 +417,8 @@ func MakeATweet(c *fiber.Ctx) error {
 		resp.ResponseType = "INVALID_TOKEN"
 		resp.Msg = "Invalid token."
 
+		c.Status(fiber.StatusUnauthorized)
+
 		err1_4 := MarshalResponseAndSetBody(resp, c)
 		if err1_4 != nil {
 			return err1_4
@@ -419,8 +427,11 @@ func MakeATweet(c *fiber.Ctx) error {
 		return nil
 	}
 
+	// Extract the JWT claims
+	tokenClaims := GetJWTclaims(tweetRequest.Token)
+
 	// Check if user exists
-	userDoc, err1_5 := db.GetDocumentFromDB(UsersCol, tweetRequest.Email)
+	userDoc, err1_5 := db.GetDocFromDBUsingUUID(UsersCol, tokenClaims.UserUUID)
 	if err1_5 != nil {
 		c.SendString("Failed while finding user in db.")
 		return err1_5
@@ -443,10 +454,10 @@ func MakeATweet(c *fiber.Ctx) error {
 	}
 
 	// Insert all the info that are required to be saved with the tweet
-	var tweetInfo = models.Tweet{
+	var tweetInfo = models.TweetDB{
 		UserUUID:  user.UUID,
 		TweetUUID: uuid.NewV4().String(),
-		Email:     tweetRequest.Email,
+		Email:     user.Email,
 		Tweet:     tweetRequest.Tweet,
 		Metrics: models.TweetMetrics{
 			Retweets_count:   0,
@@ -508,24 +519,14 @@ func GetTweets(c *fiber.Ctx) error {
 		return nil
 	}
 
-	uuidValueEmpty := validate.IsStringEmpty(req.UserUUID)
-	if uuidValueEmpty {
-		baseResp = SetMissingFieldResponse("user_uuid")
-		c.Status(fiber.ErrBadRequest.Code)
-
-		err := MarshalResponseAndSetBody(baseResp, c)
-		if err != nil {
-			return err
-		}
-		return nil
-	}
-
+	// Validate token
 	validToken := IsTokenValid(req.Token)
 	if !validToken {
 		baseResp.Success = false
 		baseResp.ResponseType = "INVALID_TOKEN"
 		baseResp.Msg = "Invalid token."
 
+		c.Status(fiber.StatusUnauthorized)
 		err2 := MarshalResponseAndSetBody(baseResp, c)
 		if err2 != nil {
 			return err2
@@ -534,7 +535,10 @@ func GetTweets(c *fiber.Ctx) error {
 		return nil
 	}
 
-	tweets, err12 := db.GetAllMatchingDocuments(TweetsCol, req.UserUUID)
+	// Extract the JWT claims
+	tokenClaims := GetJWTclaims(req.Token)
+
+	tweets, err12 := db.GetTweets(TweetsCol, tokenClaims.UserUUID)
 	if err12 != nil {
 		return err12
 	}
@@ -563,6 +567,16 @@ func IsTokenValid(tokenString string) bool {
 		return jwtKey, nil
 	})
 	return token.Valid
+}
+
+func GetJWTclaims(tokenString string) *models.Claims {
+
+	claims := &models.Claims{}
+	jwt.ParseWithClaims(tokenString, claims, func(t *jwt.Token) (interface{}, error) {
+		return jwtKey, nil
+	})
+
+	return claims
 }
 
 func MarshalResponseAndSetBody(resp interface{}, c *fiber.Ctx) error {
