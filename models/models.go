@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
-	"go.mongodb.org/mongo-driver/bson"
 )
 
 type BaseResponse struct {
@@ -42,7 +41,7 @@ type UserMetrics struct {
 }
 
 type DeleteUserRequest struct {
-	Email string `json:"email"`
+	Token string `json:"token"`
 }
 
 type SignInRequest struct {
@@ -56,13 +55,12 @@ type SignInResponse struct {
 }
 
 type MakeATweetRequest struct {
-	Email string `json:"email"`
 	Tweet string `json:"tweet"`
 	Token string `json:"token"`
 }
 
 // Tweets info to be saved in the db
-type Tweet struct {
+type TweetDB struct {
 	UserUUID  string `json:"user_uuid"`
 	TweetUUID string `json:"tweet_uuid"`
 	Email     string `json:"email"`
@@ -70,6 +68,12 @@ type Tweet struct {
 	Metrics   TweetMetrics
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+}
+
+type Tweet struct {
+	TweetUUID string `json:"tweet_uuid"`
+	Tweet     string `json:"tweet"`
+	Metrics   TweetMetrics
 }
 
 type TweetMetrics struct {
@@ -85,11 +89,10 @@ type Claims struct {
 }
 
 type GetTweetsRequest struct {
-	UserUUID string `json:"user_uuid"`
-	Token    string `json:"token"`
+	Token string `json:"token"`
 }
 
 type GetTweetsResponse struct {
-	Success bool     `json:"success"`
-	Tweets  []bson.M `json:"tweets"`
+	Success bool    `json:"success"`
+	Tweets  []Tweet `json:"tweets"`
 }
