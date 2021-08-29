@@ -6,6 +6,10 @@ import (
 	"github.com/dgrijalva/jwt-go"
 )
 
+type BaseRequest struct {
+	Token string `json:"token"`
+}
+
 type BaseResponse struct {
 	ResponseType string
 	Success      bool
@@ -22,15 +26,33 @@ type CreateUserRequest struct {
 
 // User info to be saved in the db
 type UserInfo struct {
-	UUID      string      `json:"uuid"`
-	FirstName string      `json:"firstname"`
-	LastName  string      `json:"lastname"`
-	Age       int         `json:"age"`
-	Email     string      `json:"email"`
-	Password  string      `json:"password"`
-	Metrics   UserMetrics `json:"-"`
-	CreatedAt time.Time   `json:"created_at"`
-	UpdatedAt time.Time   `json:"updates_at"`
+	UUID       string      `json:"uuid"`
+	Account_ID string      `json:"account_id" bson:"account_id"`
+	FirstName  string      `json:"firstname"`
+	LastName   string      `json:"lastname"`
+	Age        int         `json:"age"`
+	Email      string      `json:"email"`
+	Password   string      `json:"password"`
+	Metrics    UserMetrics `json:"-"`
+	Created_At time.Time   `json:"created_at" bson:"created_at"`
+	Updated_At time.Time   `json:"updates_at" bson:"updated_at"`
+}
+
+type FollowRequest struct {
+	Following_Account_ID string `json:"following_account_id" bson:"following_account_id"`
+	Token                string `json:"token"`
+}
+
+type Followers struct {
+	ID                   string `json:"id"`                                               // an ID unique to this document
+	Follower_Account_ID  string `json:"follower_account_id"`                              // the person who is following
+	Following_Account_ID string `json:"following_account_id" bson:"following_account_id"` // the person being followed
+}
+
+type Following struct {
+	ID                     string `json:"id"`
+	Follower_Account_UUID  string `json:"follower_account_id" bson:"follower_account_id"`
+	Following_Account_UUID string `json:"following_account_id" bson:"following_account_id"`
 }
 
 type UserMetrics struct {
@@ -61,19 +83,19 @@ type MakeATweetRequest struct {
 
 // Tweets info to be saved in the db
 type TweetDB struct {
-	UserUUID  string `json:"user_uuid"`
-	TweetUUID string `json:"tweet_uuid"`
-	Email     string `json:"email"`
-	Tweet     string `json:"tweet"`
-	Metrics   TweetMetrics
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	User_UUID  string `json:"user_uuid"`
+	Tweet_UUID string `json:"tweet_uuid"`
+	Email      string `json:"email"`
+	Tweet      string `json:"tweet"`
+	Metrics    TweetMetrics
+	Created_At time.Time `json:"created_at"`
+	Updated_At time.Time `json:"updated_at"`
 }
 
 type Tweet struct {
-	TweetUUID string `json:"tweet_uuid"`
-	Tweet     string `json:"tweet"`
-	Metrics   TweetMetrics
+	Tweet_UUID string `json:"tweet_uuid"`
+	Tweet      string `json:"tweet"`
+	Metrics    TweetMetrics
 }
 
 type TweetMetrics struct {
@@ -84,7 +106,8 @@ type TweetMetrics struct {
 }
 
 type Claims struct {
-	UserUUID string
+	User_UUID  string
+	Account_ID string
 	jwt.StandardClaims
 }
 
