@@ -11,9 +11,9 @@ type BaseRequest struct {
 }
 
 type BaseResponse struct {
-	ResponseType string
-	Success      bool
-	Msg          string
+	Success      bool   `json:"success"`
+	ResponseType string `json:"response_type"`
+	Msg          string `json:"Msg,omitempty"`
 }
 
 type CreateUserRequest struct {
@@ -44,15 +44,9 @@ type FollowRequest struct {
 }
 
 type Followers struct {
-	ID                   string `json:"id"`                                               // an ID unique to this document
-	Follower_Account_ID  string `json:"follower_account_id"`                              // the person who is following
-	Following_Account_ID string `json:"following_account_id" bson:"following_account_id"` // the person being followed
-}
-
-type Following struct {
-	ID                     string `json:"id"`
-	Follower_Account_UUID  string `json:"follower_account_id" bson:"follower_account_id"`
-	Following_Account_UUID string `json:"following_account_id" bson:"following_account_id"`
+	ID                   string `json:"id"`                   // an ID unique to this document
+	Follower_Account_ID  string `json:"follower_account_id"`  // the person who is following
+	Following_Account_ID string `json:"following_account_id"` // the person being followed
 }
 
 type UserMetrics struct {

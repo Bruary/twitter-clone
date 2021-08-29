@@ -32,7 +32,6 @@ import (
 var UsersCol *mongo.Collection
 var TweetsCol *mongo.Collection
 var FollowersCol *mongo.Collection
-var FollowingCol *mongo.Collection
 
 var jwtKey = []byte("White_Yasmin")
 
@@ -43,7 +42,6 @@ func main() {
 	UsersCol = dbConn.Collection("Users")
 	TweetsCol = dbConn.Collection("Tweets")
 	FollowersCol = dbConn.Collection("Followers")
-	FollowingCol = dbConn.Collection("Following")
 
 	app := fiber.New()
 
@@ -650,7 +648,10 @@ func Follow(c *fiber.Ctx) error {
 	resp.Success = true
 	resp.ResponseType = "ACCOUNT_FOLLOWED"
 
-	MarshalResponseAndSetBody(resp, c)
+	err3 := MarshalResponseAndSetBody(resp, c)
+	if err3 != nil {
+		return err3
+	}
 
 	return nil
 
