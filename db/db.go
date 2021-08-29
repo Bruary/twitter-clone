@@ -86,7 +86,7 @@ func DeleteUser(dbCollection *mongo.Collection, usersUUID string) error {
 }
 
 func GetAllMatchingDocuments(dbCollection *mongo.Collection, userUUID string) ([]bson.M, error) {
-	cursor, err := dbCollection.Find(context.TODO(), bson.M{"useruuid": userUUID})
+	cursor, err := dbCollection.Find(context.TODO(), bson.M{"user_uuid": userUUID})
 	if err != nil {
 		return nil, err
 	}
@@ -106,13 +106,13 @@ func GetTweets(dbCollection *mongo.Collection, userUUID string) ([]models.Tweet,
 
 	// ignore the following fields and return the rest from the db
 	var projection = bson.M{
-		"useruuid":  0,
-		"email":     0,
-		"createdat": 0,
-		"updatedat": 0,
+		"user_uuid":  0,
+		"email":      0,
+		"created_at": 0,
+		"updated_at": 0,
 	}
 
-	cursor, err := dbCollection.Find(context.TODO(), bson.M{"useruuid": userUUID}, options.Find().SetProjection(projection))
+	cursor, err := dbCollection.Find(context.TODO(), bson.M{"user_uuid": userUUID}, options.Find().SetProjection(projection))
 	if err != nil {
 		return tweets, err
 	}
