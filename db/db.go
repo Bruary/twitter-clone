@@ -130,3 +130,38 @@ func GetTweets(dbCollection *mongo.Collection, userUUID string) ([]models.Tweet,
 
 	return tweets, nil
 }
+
+func FollowerFollowingCombinationExists(dbCollection *mongo.Collection, followerAccountID string, followingAccountID string) bool {
+
+	result := dbCollection.FindOne(context.TODO(), bson.M{
+		"follower_account_id":  followerAccountID,
+		"following_account_id": followingAccountID})
+
+	return result.Err() != mongo.ErrNoDocuments
+}
+
+func UpdateFollowingCount(dbCollection *mongo.Collection, accountID string) error {
+
+	result := dbCollection.FindOneAndUpdate(context.TODO(),
+		bson.M{"account_id": accountID},
+		bson.M{"$inc": bson.M{"metrics.following_count": 1}})
+
+	if result.Err() == mongo.ErrNoDocuments {
+		return result.Err()
+	}
+
+	return nil
+}
+
+func UpdateFollowersCount(dbCollection *mongo.Collection, accountID string) error {
+
+	result := dbCollection.FindOneAndUpdate(context.TODO(),
+		bson.M{"account_id": accountID},
+		bson.M{"$inc": bson.M{"metrics.followers_count": 1}})
+
+	if result.Err() == mongo.ErrNoDocuments {
+		return result.Err()
+	}
+
+	return nil
+}
