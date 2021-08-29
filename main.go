@@ -10,7 +10,12 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"time"
+
+	"crypto/rand"
+
+	"encoding/hex"
 
 	"github.com/Bruary/twitter-clone/db"
 	"github.com/Bruary/twitter-clone/models"
@@ -26,6 +31,8 @@ import (
 
 var UsersCol *mongo.Collection
 var TweetsCol *mongo.Collection
+var FollowersCol *mongo.Collection
+var FollowingCol *mongo.Collection
 
 var jwtKey = []byte("White_Yasmin")
 
@@ -35,16 +42,19 @@ func main() {
 
 	UsersCol = dbConn.Collection("Users")
 	TweetsCol = dbConn.Collection("Tweets")
+	FollowersCol = dbConn.Collection("Followers")
+	FollowingCol = dbConn.Collection("Following")
 
 	app := fiber.New()
 
 	app.Use(cors.New())
 
+	app.Post("/signin", SignIn)
 	app.Post("/createUser", CreateUser)
 	app.Delete("/deleteUser", DeleteUser)
 	app.Post("/makeATweet", MakeATweet)
 	app.Post("/getTweets", GetTweets)
-	app.Post("/signin", SignIn)
+	app.Post("/follow", Follow)
 
 	app.Listen(":4000")
 }
@@ -144,22 +154,34 @@ func CreateUser(c *fiber.Ctx) error {
 		return err10_5
 	}
 
+	// Create a random account ID
+	a := make([]byte, 5)
+
+	_, err20_1 := rand.Read(a)
+	if err20_1 != nil {
+		c.SendString("Creating account ID failed.")
+		return err20_1
+	}
+
+	accountID := strings.ToUpper("#" + hex.EncodeToString(a))
+
 	// Fill in the user details
 	userInfo := &models.UserInfo{
-		UUID:      uuid.NewV4().String(),
-		FirstName: userReceivedInfo.FirstName,
-		LastName:  userReceivedInfo.LastName,
-		Age:       userReceivedInfo.Age,
-		Email:     userReceivedInfo.Email,
-		Password:  string(passwordHashedAndSalted),
+		UUID:       uuid.NewV4().String(),
+		Account_ID: accountID,
+		FirstName:  userReceivedInfo.FirstName,
+		LastName:   userReceivedInfo.LastName,
+		Age:        userReceivedInfo.Age,
+		Email:      userReceivedInfo.Email,
+		Password:   string(passwordHashedAndSalted),
 		Metrics: models.UserMetrics{
 			Followers_count:      0,
 			Total_tweets_count:   0,
 			Total_retweets_count: 0,
 			Total_likes_count:    0,
 		},
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
+		Created_At: time.Now(),
+		Updated_At: time.Now(),
 	}
 
 	// call the InsertDocumentToDB func to add a new user to the db collection 'Users'
@@ -225,7 +247,7 @@ func DeleteUser(c *fiber.Ctx) error {
 	// Extract the JWT claims
 	tokenClaims := GetJWTclaims(req.Token)
 
-	err1 := db.DeleteUser(UsersCol, tokenClaims.UserUUID)
+	err1 := db.DeleteUser(UsersCol, tokenClaims.User_UUID)
 	if err1 != nil {
 
 		resp.ResponseType = "UNKNOWN_ERROR"
@@ -342,9 +364,10 @@ func SignIn(c *fiber.Ctx) error {
 
 	// create the claims that will be used in the JWT token
 	claims := &models.Claims{
-		UserUUID: userDocumentDecoded.UUID,
+		User_UUID:  userDocumentDecoded.UUID,
+		Account_ID: userDocumentDecoded.Account_ID,
 		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: time.Now().Add(5 * time.Minute).Unix(),
+			ExpiresAt: time.Now().Add(60 * time.Minute).Unix(),
 		},
 	}
 
@@ -431,7 +454,7 @@ func MakeATweet(c *fiber.Ctx) error {
 	tokenClaims := GetJWTclaims(tweetRequest.Token)
 
 	// Check if user exists
-	userDoc, err1_5 := db.GetDocFromDBUsingUUID(UsersCol, tokenClaims.UserUUID)
+	userDoc, err1_5 := db.GetDocFromDBUsingUUID(UsersCol, tokenClaims.User_UUID)
 	if err1_5 != nil {
 		c.SendString("Failed while finding user in db.")
 		return err1_5
@@ -455,18 +478,18 @@ func MakeATweet(c *fiber.Ctx) error {
 
 	// Insert all the info that are required to be saved with the tweet
 	var tweetInfo = models.TweetDB{
-		UserUUID:  user.UUID,
-		TweetUUID: uuid.NewV4().String(),
-		Email:     user.Email,
-		Tweet:     tweetRequest.Tweet,
+		User_UUID:  user.UUID,
+		Tweet_UUID: uuid.NewV4().String(),
+		Email:      user.Email,
+		Tweet:      tweetRequest.Tweet,
 		Metrics: models.TweetMetrics{
 			Retweets_count:   0,
 			Likes_count:      0,
 			Comments_count:   0,
 			Characters_count: len(tweetRequest.Tweet),
 		},
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
+		Created_At: time.Now(),
+		Updated_At: time.Now(),
 	}
 
 	err2 := db.InsertDocumentToDB(TweetsCol, tweetInfo)
@@ -538,7 +561,7 @@ func GetTweets(c *fiber.Ctx) error {
 	// Extract the JWT claims
 	tokenClaims := GetJWTclaims(req.Token)
 
-	tweets, err12 := db.GetTweets(TweetsCol, tokenClaims.UserUUID)
+	tweets, err12 := db.GetTweets(TweetsCol, tokenClaims.User_UUID)
 	if err12 != nil {
 		return err12
 	}
@@ -554,6 +577,83 @@ func GetTweets(c *fiber.Ctx) error {
 	}
 
 	return nil
+}
+
+func Follow(c *fiber.Ctx) error {
+
+	c.Context().SetContentType("applications/json")
+
+	var req models.FollowRequest
+	var resp models.BaseResponse
+
+	err := UnmarshalRequest(&req, c)
+	if err != nil {
+		return err
+	}
+
+	// Request validation
+	tokenValueEmpty := validate.IsStringEmpty(req.Token)
+	if tokenValueEmpty {
+		resp = SetMissingFieldResponse("token")
+		c.Status(fiber.ErrBadRequest.Code)
+
+		err := MarshalResponseAndSetBody(resp, c)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+
+	followingAccountIDEmpty := validate.IsStringEmpty(req.Following_Account_ID)
+	if followingAccountIDEmpty {
+		resp = SetMissingFieldResponse("following_account_id")
+		c.Status(fiber.ErrBadRequest.Code)
+
+		err := MarshalResponseAndSetBody(resp, c)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+
+	// Validate token
+	validToken := IsTokenValid(req.Token)
+	if !validToken {
+		resp.Success = false
+		resp.ResponseType = "INVALID_TOKEN"
+		resp.Msg = "Invalid token."
+
+		c.Status(fiber.StatusUnauthorized)
+		err2 := MarshalResponseAndSetBody(resp, c)
+		if err2 != nil {
+			return err2
+		}
+
+		return nil
+	}
+
+	// Extract the JWT claims
+	tokenClaims := GetJWTclaims(req.Token)
+
+	followerData := &models.Followers{
+		ID:                   uuid.NewV4().String(),
+		Follower_Account_ID:  tokenClaims.Account_ID,
+		Following_Account_ID: req.Following_Account_ID,
+	}
+
+	err2 := db.InsertDocumentToDB(FollowersCol, followerData)
+	if err2 != nil {
+		c.SendString("Inserting tweet to the db failed.")
+		return err2
+	}
+
+	resp.Success = true
+	resp.ResponseType = "ACCOUNT_FOLLOWED"
+
+	MarshalResponseAndSetBody(resp, c)
+
+	return nil
+
 }
 
 func DoPasswordsMatch(password []byte, savedPassword string) bool {
