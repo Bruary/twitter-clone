@@ -174,6 +174,7 @@ func CreateUser(c *fiber.Ctx) error {
 		Password:   string(passwordHashedAndSalted),
 		Metrics: models.UserMetrics{
 			Followers_count:      0,
+			Following_count:      0,
 			Total_tweets_count:   0,
 			Total_retweets_count: 0,
 			Total_likes_count:    0,
@@ -476,10 +477,11 @@ func MakeATweet(c *fiber.Ctx) error {
 
 	// Insert all the info that are required to be saved with the tweet
 	var tweetInfo = models.TweetDB{
-		User_UUID:  user.UUID,
-		Tweet_UUID: uuid.NewV4().String(),
-		Email:      user.Email,
-		Tweet:      tweetRequest.Tweet,
+		User_UUID:       user.UUID,
+		User_Account_ID: tokenClaims.Account_ID,
+		Tweet_UUID:      uuid.NewV4().String(),
+		Email:           user.Email,
+		Tweet:           tweetRequest.Tweet,
 		Metrics: models.TweetMetrics{
 			Retweets_count:   0,
 			Likes_count:      0,
@@ -578,7 +580,6 @@ func GetTweets(c *fiber.Ctx) error {
 }
 
 func Follow(c *fiber.Ctx) error {
-
 	c.Context().SetContentType("applications/json")
 
 	var req models.FollowRequest
@@ -633,16 +634,36 @@ func Follow(c *fiber.Ctx) error {
 	// Extract the JWT claims
 	tokenClaims := GetJWTclaims(req.Token)
 
-	followerData := &models.Followers{
-		ID:                   uuid.NewV4().String(),
-		Follower_Account_ID:  tokenClaims.Account_ID,
-		Following_Account_ID: req.Following_Account_ID,
-	}
+	// Check if this follower-follower relationship exist in the db
+	followerFollowingCombExits := db.FollowerFollowingCombinationExists(FollowersCol, tokenClaims.Account_ID, req.Following_Account_ID)
+	if !followerFollowingCombExits {
 
-	err2 := db.InsertDocumentToDB(FollowersCol, followerData)
-	if err2 != nil {
-		c.SendString("Inserting tweet to the db failed.")
-		return err2
+		followerData := &models.Followers{
+			ID:                   uuid.NewV4().String(),
+			Follower_Account_ID:  tokenClaims.Account_ID,
+			Following_Account_ID: req.Following_Account_ID,
+		}
+
+		err2 := db.InsertDocumentToDB(FollowersCol, followerData)
+		if err2 != nil {
+			c.SendString("Inserting tweet to the db failed.")
+			return err2
+		}
+
+		// increment the "following" field
+		err3 := db.UpdateFollowingCount(UsersCol, tokenClaims.Account_ID)
+		if err3 != nil {
+			c.SendString("Updating following count failed.")
+			return err3
+		}
+
+		// increment the "followers" field
+		err4 := db.UpdateFollowersCount(UsersCol, req.Following_Account_ID)
+		if err4 != nil {
+			c.SendString("Updating followers count failed.")
+			return err4
+		}
+
 	}
 
 	resp.Success = true
