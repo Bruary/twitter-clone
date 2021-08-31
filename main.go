@@ -319,6 +319,7 @@ func SignIn(c *fiber.Ctx) error {
 		baseResp.ResponseType = "USER_DOES_NOT_EXIST"
 		baseResp.Msg = "Invalid email or password."
 
+		c.Status(fiber.StatusUnauthorized)
 		err3 := MarshalResponseAndSetBody(baseResp, c)
 		if err3 != nil {
 			return err3
@@ -351,6 +352,7 @@ func SignIn(c *fiber.Ctx) error {
 		baseResp.ResponseType = "INVALID_CREDENTIALS"
 		baseResp.Msg = "Invalid email or password."
 
+		c.Status(fiber.StatusUnauthorized)
 		err3_2 := MarshalResponseAndSetBody(baseResp, c)
 		if err3_2 != nil {
 			return err3_2
