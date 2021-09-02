@@ -71,7 +71,7 @@ type SignInResponse struct {
 	Token   string `json:"token"`
 }
 
-type MakeATweetRequest struct {
+type CreateTweetRequest struct {
 	Tweet string `json:"tweet"`
 	Token string `json:"token"`
 }
@@ -105,10 +105,6 @@ type Claims struct {
 	User_UUID  string
 	Account_ID string
 	jwt.StandardClaims
-}
-
-type GetTweetsRequest struct {
-	Token string `json:"token"`
 }
 
 type GetTweetsResponse struct {
