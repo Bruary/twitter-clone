@@ -47,12 +47,23 @@ func main() {
 
 	app.Use(cors.New())
 
-	app.Post("/signin", SignIn)
-	app.Post("/createUser", CreateUser)
-	app.Delete("/deleteUser", DeleteUser)
-	app.Post("/makeATweet", MakeATweet)
-	app.Post("/getTweets", GetTweets)
-	app.Post("/follow", Follow)
+	api := app.Group("/api") // api/
+
+	v1 := api.Group("/v1") // api/v1/
+
+	auth := v1.Group("/auth") // api/v1/auth/
+	auth.Post("/signin", SignIn)
+	auth.Post("/createUser", CreateUser)
+
+	user := v1.Group("/user") // api/v1/user/
+	user.Delete("/delete", DeleteUser)
+
+	tweet := v1.Group("/tweets") // api/v1/tweet/
+	tweet.Post("/create", CreateTweet)
+	tweet.Post("/get", GetTweets)
+
+	v1.Post("/follow", Follow)
+	v1.Post("/feed", Feed)
 
 	app.Listen(":4000")
 }
@@ -397,11 +408,11 @@ func SignIn(c *fiber.Ctx) error {
 }
 
 // Saves a tweet to the db with all required information
-func MakeATweet(c *fiber.Ctx) error {
+func CreateTweet(c *fiber.Ctx) error {
 
 	c.Context().SetContentType("application/jsons")
 
-	var tweetRequest models.MakeATweetRequest
+	var tweetRequest models.CreateTweetRequest
 	var resp models.BaseResponse
 
 	err := UnmarshalRequest(&tweetRequest, c)
@@ -523,7 +534,7 @@ func GetTweets(c *fiber.Ctx) error {
 
 	c.Context().SetContentType("applications/json")
 
-	var req models.GetTweetsRequest
+	var req models.BaseRequest
 	var baseResp models.BaseResponse
 
 	err := UnmarshalRequest(&req, c)
@@ -677,7 +688,19 @@ func Follow(c *fiber.Ctx) error {
 	}
 
 	return nil
+}
 
+func Feed(c *fiber.Ctx) error {
+	c.Context().SetContentType("applications/json")
+
+	// Stages
+	// 1) Get all your followers
+	// 2) Group all the tweets of your followers
+	// 3) Sort the tweets based on date
+	// 4) Show latest 30 tweets
+
+	//var req models.BaseRequest
+	return nil
 }
 
 func DoPasswordsMatch(password []byte, savedPassword string) bool {
