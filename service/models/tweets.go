@@ -33,6 +33,6 @@ type CreateTweetRequest struct {
 }
 
 type GetTweetsResponse struct {
-	Success bool    `json:"success"`
-	Tweets  []Tweet `json:"tweets"`
+	BaseResponse
+	Tweets []Tweet `json:"tweets"`
 }

@@ -6,6 +6,6 @@ type SignInRequest struct {
 }
 
 type SignInResponse struct {
-	Success bool
-	Token   string `json:"token"`
+	BaseResponse
+	Token string `json:"token,omitempty"`
 }
