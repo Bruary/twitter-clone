@@ -111,7 +111,7 @@ func DeleteUser(dbCollection *mongo.Collection, usersUUID string) error {
 	return nil
 }
 
-func GetAllMatchingDocuments(dbCollection *mongo.Collection, userUUID string) ([]bson.M, error) {
+func GetAllMatchingDocumentsUsingUUID(dbCollection *mongo.Collection, userUUID string) ([]bson.M, error) {
 	cursor, err := dbCollection.Find(context.TODO(), bson.M{"user_uuid": userUUID})
 	if err != nil {
 		return nil, err
@@ -127,7 +127,7 @@ func GetAllMatchingDocuments(dbCollection *mongo.Collection, userUUID string) ([
 	return result, nil
 }
 
-func GetTweets(dbCollection *mongo.Collection, userUUID string) ([]models.Tweet, error) {
+func GetTweetsUsingUUID(dbCollection *mongo.Collection, userUUID string) ([]models.Tweet, error) {
 	var tweets []models.Tweet
 
 	// ignore the following fields and return the rest from the db
@@ -139,6 +139,78 @@ func GetTweets(dbCollection *mongo.Collection, userUUID string) ([]models.Tweet,
 	}
 
 	cursor, err := dbCollection.Find(context.TODO(), bson.M{"user_uuid": userUUID}, options.Find().SetProjection(projection))
+	if err != nil {
+		return tweets, err
+	}
+
+	// If there are no tweets then return an empty string
+	if cursor.RemainingBatchLength() == 0 {
+		return []models.Tweet{}, nil
+	}
+
+	// Decode all the tweets from the db to the Tweets struct
+	err2 := cursor.All(context.TODO(), &tweets)
+	if err2 != nil {
+		return tweets, err2
+	}
+
+	return tweets, nil
+}
+
+func GetTweetsUsingAccountID(dbCollection *mongo.Collection, accountID string) ([]models.Tweet, error) {
+	var tweets []models.Tweet
+
+	// ignore the following fields and return the rest from the db
+	var projection = bson.M{
+		"user_uuid":  0,
+		"email":      0,
+		"created_at": 0,
+		"updated_at": 0,
+	}
+
+	cursor, err := dbCollection.Find(context.TODO(), bson.M{"account_id": accountID}, options.Find().SetProjection(projection))
+	if err != nil {
+		return tweets, err
+	}
+
+	// If there are no tweets then return an empty string
+	if cursor.RemainingBatchLength() == 0 {
+		return []models.Tweet{}, nil
+	}
+
+	// Decode all the tweets from the db to the Tweets struct
+	err2 := cursor.All(context.TODO(), &tweets)
+	if err2 != nil {
+		return tweets, err2
+	}
+
+	return tweets, nil
+}
+
+func GetTweetsForAListOfAccounts(dbCollection *mongo.Collection, accountIDs []string) ([]models.Tweet, error) {
+
+	var tweets []models.Tweet
+
+	// get any document that has one of the accountIDs listed in the array
+	filter := bson.M{"account_id": bson.M{"$in": accountIDs}}
+
+	// sort the document according to time/date (newest on top)
+	sortCriteria := bson.M{"created_at": -1}
+
+	// limit the documents count to 30
+	tweetsLimit := 30
+
+	// ignore the following fields and return the rest from the db
+	var projection = bson.M{
+		"user_uuid":  0,
+		"email":      0,
+		"created_at": 0,
+		"updated_at": 0,
+	}
+
+	cursor, err := dbCollection.Find(context.TODO(),
+		filter,
+		options.Find().SetSort(sortCriteria).SetProjection(projection).SetLimit(int64(tweetsLimit)))
 	if err != nil {
 		return tweets, err
 	}
@@ -190,4 +262,36 @@ func UpdateFollowersCount(dbCollection *mongo.Collection, accountID string) erro
 	}
 
 	return nil
+}
+
+func GetAllFollowingAccountIDs(dbCollection *mongo.Collection, accountID string) ([]string, error) {
+
+	projection := bson.M{
+		"id":                  0,
+		"follower_account_id": 0,
+	}
+
+	// get all document that has the follower account ID
+	// then remove all fields and keep only the folloing_account_id field
+	cursor, err := dbCollection.Find(context.TODO(), bson.M{"follower_account_id": accountID}, options.Find().SetProjection(projection))
+	if err != nil {
+		return nil, err
+	}
+
+	var result []models.Followers
+
+	// fill the result array using cursor.All()
+	err2 := cursor.All(context.TODO(), &result)
+	if err2 != nil {
+		return nil, err2
+	}
+
+	// we only need the value not the key/value pair or object
+	// thus we used a for-loop to get only the value
+	var finalOutput []string
+	for i := 0; i < len(result); i++ {
+		finalOutput = append(finalOutput, result[i].Following_Account_ID)
+	}
+
+	return finalOutput, nil
 }
