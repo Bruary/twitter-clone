@@ -10,7 +10,7 @@ type BaseRequest struct {
 
 type BaseResponse struct {
 	Success      bool   `json:"success"`
-	ResponseType string `json:"response_type"`
+	ResponseType string `json:"response_type,omitempty"`
 	Msg          string `json:"Msg,omitempty"`
 }
 
