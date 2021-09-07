@@ -15,7 +15,6 @@ import (
 	"github.com/Bruary/twitter-clone/service/twitter"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
-	bcrypt "golang.org/x/crypto/bcrypt"
 )
 
 func main() {
@@ -158,11 +157,6 @@ func Feed(c *fiber.Ctx) error {
 	return nil
 }
 
-func DoPasswordsMatch(password []byte, savedPassword string) bool {
-	err := bcrypt.CompareHashAndPassword([]byte(savedPassword), password)
-	return err == nil
-}
-
 func MarshalResponseAndSetBody(resp interface{}, c *fiber.Ctx) error {
 	result, err := json.Marshal(resp)
 	if err != nil {
@@ -183,39 +177,4 @@ func UnmarshalRequest(reqStruct interface{}, c *fiber.Ctx) error {
 	}
 
 	return nil
-}
-
-func SetMissingFieldResponse(fieldName string) models.BaseResponse {
-	return models.BaseResponse{
-		Success:      false,
-		ResponseType: "FIELD_MISSING",
-		Msg:          "Field " + "'" + fieldName + "'" + " is missing, or empty.",
-	}
-}
-
-func SetCriteriaErrorResponse(fieldName string) models.BaseResponse {
-
-	if fieldName == "age" {
-
-		return models.BaseResponse{
-			Success:      false,
-			ResponseType: "FIELD_ERROR",
-			Msg:          "Age should be 12 and above years old to create an account.",
-		}
-
-	} else if fieldName == "password" {
-
-		return models.BaseResponse{
-			Success:      false,
-			ResponseType: "FIELD_ERROR",
-			Msg:          "Password should atleast have 8 characters.",
-		}
-
-	}
-
-	return models.BaseResponse{
-		Success:      false,
-		ResponseType: "UNKNOWN_ERROR",
-		Msg:          "Can't find error type, SetCriteriaErrorResponse.",
-	}
 }
