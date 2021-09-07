@@ -5,13 +5,27 @@ import (
 	"fmt"
 	"log"
 
-	models "github.com/Bruary/twitter-clone/models"
+	models "github.com/Bruary/twitter-clone/service/models"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+var dbConn *mongo.Database
 var UsersCol *mongo.Collection
+var TweetsCol *mongo.Collection
+var FollowersCol *mongo.Collection
+
+func SetUpDBConnection() {
+
+	// establish a connection to the db
+	dbConn = GetDBConn()
+
+	// connect to the following connections after establishing a connection to the db
+	UsersCol = ConnectToUsersCol()
+	TweetsCol = ConnectToTweetsCol()
+	FollowersCol = ConnectToFollowersCol()
+}
 
 func GetDBConn() *mongo.Database {
 
@@ -35,6 +49,18 @@ func GetDBConn() *mongo.Database {
 	fmt.Println("Connected to MongoDB!")
 
 	return client.Database("twitter")
+}
+
+func ConnectToUsersCol() *mongo.Collection {
+	return dbConn.Collection("Users")
+}
+
+func ConnectToTweetsCol() *mongo.Collection {
+	return dbConn.Collection("Tweets")
+}
+
+func ConnectToFollowersCol() *mongo.Collection {
+	return dbConn.Collection("Followers")
 }
 
 func InsertDocumentToDB(dbCollection *mongo.Collection, dataToStore interface{}) error {
