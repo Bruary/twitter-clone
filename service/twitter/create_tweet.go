@@ -120,7 +120,7 @@ func (*twitter) CreateTweet(c *fiber.Ctx, req models.CreateTweetRequest) *models
 	}
 
 	return &models.BaseResponse{
-		Success:      false,
+		Success:      true,
 		ResponseType: "TWEET_SAVED",
 		Msg:          "Tweet saved to db successfully.",
 	}
