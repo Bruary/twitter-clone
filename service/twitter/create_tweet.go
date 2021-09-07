@@ -82,11 +82,11 @@ func (*twitter) CreateTweet(c *fiber.Ctx, req models.CreateTweetRequest) *models
 
 	// Insert all the info that are required to be saved with the tweet
 	var tweetInfo = models.TweetDB{
-		User_UUID:       user.UUID,
-		User_Account_ID: tokenClaims.Account_ID,
-		Tweet_UUID:      uuid.NewV4().String(),
-		Email:           user.Email,
-		Tweet:           req.Tweet,
+		User_UUID:  user.UUID,
+		Account_ID: tokenClaims.Account_ID,
+		Tweet_UUID: uuid.NewV4().String(),
+		Email:      user.Email,
+		Tweet:      req.Tweet,
 		Metrics: models.TweetMetrics{
 			Retweets_count:   0,
 			Likes_count:      0,

@@ -41,7 +41,7 @@ func (*twitter) GetTweets(c *fiber.Ctx, req models.BaseRequest) *models.GetTweet
 	// Extract the JWT claims
 	tokenClaims := validate.GetJWTclaims(req.Token)
 
-	tweets, err12 := db.GetTweets(db.TweetsCol, tokenClaims.User_UUID)
+	tweets, err12 := db.GetTweetsUsingUUID(db.TweetsCol, tokenClaims.User_UUID)
 	if err12 != nil {
 
 		return &models.GetTweetsResponse{
