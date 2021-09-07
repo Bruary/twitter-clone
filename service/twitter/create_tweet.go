@@ -16,8 +16,6 @@ import (
 // Saves a tweet to the db with all required information
 func (*twitter) CreateTweet(c *fiber.Ctx, req models.CreateTweetRequest) *models.BaseResponse {
 
-	c.Context().SetContentType("application/jsons")
-
 	// Request validation
 	tokenValueEmpty := validate.IsStringEmpty(req.Token)
 	if tokenValueEmpty {

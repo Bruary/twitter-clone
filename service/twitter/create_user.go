@@ -17,8 +17,6 @@ import (
 // Creates a new user and adds it to the db
 func (s *twitter) CreateUser(c *fiber.Ctx, req models.CreateUserRequest) *models.BaseResponse {
 
-	c.Context().SetContentType("application/json")
-
 	// Validate request
 	firstNameEmpty := validate.IsStringEmpty(req.FirstName)
 	if firstNameEmpty {

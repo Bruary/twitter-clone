@@ -10,8 +10,6 @@ import (
 // Delete user from the user using the email
 func (*twitter) DeleteUser(c *fiber.Ctx, req models.DeleteUserRequest) *models.BaseResponse {
 
-	c.Context().SetContentType("application/jsons")
-
 	tokenEmptyValue := validate.IsStringEmpty(req.Token)
 	if tokenEmptyValue {
 

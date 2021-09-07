@@ -9,8 +9,6 @@ import (
 
 func (*twitter) GetTweets(c *fiber.Ctx, req models.BaseRequest) *models.GetTweetsResponse {
 
-	c.Context().SetContentType("applications/json")
-
 	// Request validation
 	tokenValueEmpty := validate.IsStringEmpty(req.Token)
 	if tokenValueEmpty {

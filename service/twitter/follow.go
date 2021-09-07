@@ -9,7 +9,6 @@ import (
 )
 
 func (*twitter) Follow(c *fiber.Ctx, req models.FollowRequest) *models.BaseResponse {
-	c.Context().SetContentType("applications/json")
 
 	// Request validation
 	tokenValueEmpty := validate.IsStringEmpty(req.Token)

@@ -36,6 +36,8 @@ func main() {
 
 	auth.Post("/signin", func(c *fiber.Ctx) error {
 
+		c.Context().SetContentType("application/jsons")
+
 		req := models.SignInRequest{}
 		if err := UnmarshalRequest(&req, c); err != nil {
 			return err
@@ -52,6 +54,8 @@ func main() {
 	})
 
 	auth.Post("/createUser", func(c *fiber.Ctx) error {
+
+		c.Context().SetContentType("application/jsons")
 
 		req := models.CreateUserRequest{}
 		if err := UnmarshalRequest(&req, c); err != nil {
@@ -70,6 +74,8 @@ func main() {
 
 	user := v1.Group("/user") // api/v1/user/
 	user.Delete("/delete", func(c *fiber.Ctx) error {
+
+		c.Context().SetContentType("application/jsons")
 
 		req := models.DeleteUserRequest{}
 		if err := UnmarshalRequest(&req, c); err != nil {
@@ -90,6 +96,8 @@ func main() {
 
 	tweet.Post("/create", func(c *fiber.Ctx) error {
 
+		c.Context().SetContentType("application/jsons")
+
 		req := models.CreateTweetRequest{}
 		if err := UnmarshalRequest(&req, c); err != nil {
 			return err
@@ -107,6 +115,8 @@ func main() {
 
 	tweet.Post("/get", func(c *fiber.Ctx) error {
 
+		c.Context().SetContentType("application/jsons")
+
 		req := models.BaseRequest{}
 		if err := UnmarshalRequest(&req, c); err != nil {
 			return err
@@ -123,6 +133,8 @@ func main() {
 	})
 
 	v1.Post("/follow", func(c *fiber.Ctx) error {
+
+		c.Context().SetContentType("application/jsons")
 
 		req := models.FollowRequest{}
 		if err := UnmarshalRequest(&req, c); err != nil {
@@ -145,6 +157,7 @@ func main() {
 }
 
 func Feed(c *fiber.Ctx) error {
+
 	c.Context().SetContentType("applications/json")
 
 	// Stages
