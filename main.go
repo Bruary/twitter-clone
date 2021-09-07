@@ -151,23 +151,26 @@ func main() {
 		return nil
 	})
 
-	v1.Post("/feed", Feed)
+	v1.Post("/feed", func(c *fiber.Ctx) error {
+
+		c.Context().SetContentType("application/jsons")
+
+		req := models.BaseRequest{}
+		if err := UnmarshalRequest(&req, c); err != nil {
+			return err
+		}
+
+		// run the follow logic
+		resp := svc.Feed(c, req)
+
+		if err2 := MarshalResponseAndSetBody(resp, c); err2 != nil {
+			return err2
+		}
+
+		return nil
+	})
 
 	app.Listen(":4000")
-}
-
-func Feed(c *fiber.Ctx) error {
-
-	c.Context().SetContentType("applications/json")
-
-	// Stages
-	// 1) Get all your followers
-	// 2) Group all the tweets of your followers
-	// 3) Sort the tweets based on date
-	// 4) Show latest 30 tweets
-
-	//var req models.BaseRequest
-	return nil
 }
 
 func MarshalResponseAndSetBody(resp interface{}, c *fiber.Ctx) error {
