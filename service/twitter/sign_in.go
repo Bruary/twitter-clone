@@ -8,15 +8,13 @@ import (
 	"github.com/Bruary/twitter-clone/validate"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gofiber/fiber/v2"
-	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/crypto/bcrypt"
 )
 
 var jwtKey = []byte("White_Yasmin")
-var UsersCol *mongo.Collection
 
 // validate user and then sign in if creds are correct (send back token)
-func SignIn(c *fiber.Ctx, req models.SignInRequest) *models.SignInResponse {
+func (s *twitter) SignIn(c *fiber.Ctx, req models.SignInRequest) *models.SignInResponse {
 
 	c.Context().SetContentType("application/jsons")
 
@@ -50,7 +48,7 @@ func SignIn(c *fiber.Ctx, req models.SignInRequest) *models.SignInResponse {
 	}
 
 	// check if email exists in the db
-	doesUserExist, err2 := db.UserAlreadyExists(UsersCol, req.Email)
+	doesUserExist, err2 := db.UserAlreadyExists(db.UsersCol, req.Email)
 	if err2 != nil {
 
 		return &models.SignInResponse{
@@ -76,7 +74,7 @@ func SignIn(c *fiber.Ctx, req models.SignInRequest) *models.SignInResponse {
 	}
 
 	// Get the user document from the db to check the password later on
-	userDocument, err2_5 := db.GetDocFromDBUsingEmail(UsersCol, req.Email)
+	userDocument, err2_5 := db.GetDocFromDBUsingEmail(db.UsersCol, req.Email)
 	if err2_5 != nil {
 
 		return &models.SignInResponse{
