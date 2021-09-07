@@ -12,4 +12,5 @@ type Service interface {
 	CreateTweet(*fiber.Ctx, models.CreateTweetRequest) *models.BaseResponse
 	GetTweets(*fiber.Ctx, models.BaseRequest) *models.GetTweetsResponse
 	Follow(*fiber.Ctx, models.FollowRequest) *models.BaseResponse
+	Feed(*fiber.Ctx, models.BaseRequest) *models.FeedResponse
 }
