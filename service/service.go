@@ -6,11 +6,10 @@ import (
 )
 
 type Service interface {
-	CreateUser(*fiber.Ctx, models.CreateUserRequest) models.BaseResponse
+	CreateUser(*fiber.Ctx, models.CreateUserRequest) *models.BaseResponse
 	SignIn(*fiber.Ctx, models.SignInRequest) *models.SignInResponse
-	DeleteUser(*fiber.Ctx) error
-	CreateTweet(*fiber.Ctx) error
-	GetTweets(*fiber.Ctx) error
-	Follow(*fiber.Ctx) error
-	Feed(*fiber.Ctx) error
+	DeleteUser(*fiber.Ctx, models.DeleteUserRequest) *models.BaseResponse
+	CreateTweet(*fiber.Ctx, models.CreateTweetRequest) *models.BaseResponse
+	GetTweets(*fiber.Ctx, models.BaseRequest) *models.GetTweetsResponse
+	Follow(*fiber.Ctx, models.FollowRequest) *models.BaseResponse
 }
