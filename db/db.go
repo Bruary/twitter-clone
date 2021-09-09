@@ -89,7 +89,6 @@ func GetDocFromDBUsingEmail(dbCollection *mongo.Collection, usersEmail string) (
 	}
 
 	return result, nil
-
 }
 
 func GetDocFromDBUsingUUID(dbCollection *mongo.Collection, usersUUID string) (*mongo.SingleResult, error) {
