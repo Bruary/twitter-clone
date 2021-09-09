@@ -14,7 +14,7 @@ import (
 var jwtKey = []byte("White_Yasmin")
 
 // validate user and then sign in if creds are correct (send back token)
-func (s *twitter) SignIn(c *fiber.Ctx, req models.SignInRequest) *models.SignInResponse {
+func (s *twitterClone) SignIn(c *fiber.Ctx, req models.SignInRequest) *models.SignInResponse {
 
 	// Validate request
 	emailValueEmpty := validate.IsStringEmpty(req.Email)

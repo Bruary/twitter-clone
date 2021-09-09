@@ -8,7 +8,7 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
-func (*twitter) Follow(c *fiber.Ctx, req models.FollowRequest) *models.BaseResponse {
+func (*twitterClone) Follow(c *fiber.Ctx, req models.FollowRequest) *models.BaseResponse {
 
 	// Request validation
 	tokenValueEmpty := validate.IsStringEmpty(req.Token)

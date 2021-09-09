@@ -14,7 +14,7 @@ import (
 )
 
 // Saves a tweet to the db with all required information
-func (*twitter) CreateTweet(c *fiber.Ctx, req models.CreateTweetRequest) *models.BaseResponse {
+func (*twitterClone) CreateTweet(c *fiber.Ctx, req models.CreateTweetRequest) *models.BaseResponse {
 
 	// Request validation
 	tokenValueEmpty := validate.IsStringEmpty(req.Token)

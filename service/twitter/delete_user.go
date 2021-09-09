@@ -8,7 +8,7 @@ import (
 )
 
 // Delete user from the user using the email
-func (*twitter) DeleteUser(c *fiber.Ctx, req models.DeleteUserRequest) *models.BaseResponse {
+func (*twitterClone) DeleteUser(c *fiber.Ctx, req models.DeleteUserRequest) *models.BaseResponse {
 
 	tokenEmptyValue := validate.IsStringEmpty(req.Token)
 	if tokenEmptyValue {

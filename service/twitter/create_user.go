@@ -15,7 +15,7 @@ import (
 )
 
 // Creates a new user and adds it to the db
-func (s *twitter) CreateUser(c *fiber.Ctx, req models.CreateUserRequest) *models.BaseResponse {
+func (s *twitterClone) CreateUser(c *fiber.Ctx, req models.CreateUserRequest) *models.BaseResponse {
 
 	// Validate request
 	firstNameEmpty := validate.IsStringEmpty(req.FirstName)

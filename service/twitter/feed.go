@@ -7,7 +7,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-func (*twitter) Feed(c *fiber.Ctx, req models.BaseRequest) *models.FeedResponse {
+func (*twitterClone) Feed(c *fiber.Ctx, req models.BaseRequest) *models.FeedResponse {
 
 	// STEPS
 	tokenValueEmpty := validate.IsStringEmpty(req.Token)

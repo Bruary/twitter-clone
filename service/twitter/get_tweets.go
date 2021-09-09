@@ -7,7 +7,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-func (*twitter) GetTweets(c *fiber.Ctx, req models.BaseRequest) *models.GetTweetsResponse {
+func (*twitterClone) GetTweets(c *fiber.Ctx, req models.BaseRequest) *models.GetTweetsResponse {
 
 	// Request validation
 	tokenValueEmpty := validate.IsStringEmpty(req.Token)
