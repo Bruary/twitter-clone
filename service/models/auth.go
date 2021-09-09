@@ -9,3 +9,8 @@ type SignInResponse struct {
 	BaseResponse
 	Token string `json:"token,omitempty"`
 }
+
+type ResetPasswordRequest struct {
+	BaseResponse
+	Email string `json:"email"`
+}

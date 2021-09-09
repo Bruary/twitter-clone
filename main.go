@@ -72,6 +72,24 @@ func main() {
 		return nil
 	})
 
+	auth.Post("/resetPassword", func(c *fiber.Ctx) error {
+		c.Context().SetContentType("application/jsons")
+
+		req := models.ResetPasswordRequest{}
+		if err := UnmarshalRequest(&req, c); err != nil {
+			return err
+		}
+
+		// run the reset password logic
+		resp := svc.ResetPassword(c, req)
+
+		if err2 := MarshalResponseAndSetBody(resp, c); err2 != nil {
+			return err2
+		}
+
+		return nil
+	})
+
 	user := v1.Group("/user") // api/v1/user/
 	user.Delete("/delete", func(c *fiber.Ctx) error {
 

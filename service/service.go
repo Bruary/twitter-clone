@@ -13,4 +13,5 @@ type Service interface {
 	GetTweets(*fiber.Ctx, models.BaseRequest) *models.GetTweetsResponse
 	Follow(*fiber.Ctx, models.FollowRequest) *models.BaseResponse
 	Feed(*fiber.Ctx, models.BaseRequest) *models.FeedResponse
+	ResetPassword(*fiber.Ctx, models.ResetPasswordRequest) *models.BaseResponse
 }
