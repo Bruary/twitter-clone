@@ -90,6 +90,19 @@ func main() {
 		return nil
 	})
 
+	auth.Get("/resetPassword/newPassword", func(c *fiber.Ctx) error {
+		c.Context().SetContentType("application/jsons")
+
+		// run the reset password logic
+		resp := svc.NewPassword(c)
+
+		if err := MarshalResponseAndSetBody(resp, c); err != nil {
+			return err
+		}
+
+		return nil
+	})
+
 	user := v1.Group("/user") // api/v1/user/
 	user.Delete("/delete", func(c *fiber.Ctx) error {
 

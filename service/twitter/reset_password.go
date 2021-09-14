@@ -58,7 +58,7 @@ func (*twitterClone) ResetPassword(c *fiber.Ctx, req models.ResetPasswordRequest
 		To:      []string{user.Email},
 		From:    "Twitter-clone <bruary99@gmail.com>",
 		Subject: "Reset Password",
-		Text:    []byte("Please click on the below link to reset your password: \n" + token),
+		Text:    []byte("Please click on the below link to reset your password: \n" + "http://localhost:4000/api/v1/auth/resetPassword/newPassword?token=" + token),
 	}
 
 	// send the email
