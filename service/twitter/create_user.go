@@ -81,6 +81,8 @@ func (s *twitterClone) CreateUser(c *fiber.Ctx, req models.CreateUserRequest) *m
 	doesUserExist, err10 := db.UserAlreadyExists(db.UsersCol, req.Email)
 	if err10 == nil && doesUserExist {
 
+		c.Status(403)
+
 		return &models.BaseResponse{
 			Success:      false,
 			ResponseType: "USER_ALREADY_EXISTS",

@@ -53,7 +53,7 @@ func main() {
 		return nil
 	})
 
-	auth.Post("/createUser", func(c *fiber.Ctx) error {
+	auth.Post("/signup", func(c *fiber.Ctx) error {
 
 		c.Context().SetContentType("application/jsons")
 
