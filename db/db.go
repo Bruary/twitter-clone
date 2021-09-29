@@ -294,3 +294,17 @@ func GetAllFollowingAccountIDs(dbCollection *mongo.Collection, accountID string)
 
 	return finalOutput, nil
 }
+
+func UpdateUsersPassword(dbCollection *mongo.Collection, userUUID string, newPassword string) error {
+
+	fmt.Println("the uuid:", userUUID)
+	fmt.Println("the password:", newPassword)
+	result := dbCollection.FindOneAndUpdate(context.TODO(), bson.M{"uuid": userUUID},
+		bson.M{"$set": bson.M{"password": newPassword}})
+
+	if result.Err() == mongo.ErrNoDocuments {
+		return result.Err()
+	}
+
+	return nil
+}
