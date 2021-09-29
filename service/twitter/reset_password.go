@@ -18,12 +18,17 @@ func (*twitterClone) ResetPassword(c *fiber.Ctx, req models.ResetPasswordRequest
 
 		// if user does not exist
 		if err == mongo.ErrNoDocuments {
+
+			c.Status(fiber.StatusNotFound)
+
 			return &models.BaseResponse{
 				Success:      true,
 				ResponseType: "USER_DOES_NOT_EXIST",
 				Msg:          err.Error(),
 			}
 		}
+
+		c.Status(fiber.ErrBadRequest.Code)
 
 		return &models.BaseResponse{
 			Success:      false,
@@ -36,6 +41,7 @@ func (*twitterClone) ResetPassword(c *fiber.Ctx, req models.ResetPasswordRequest
 
 	// decode the single result into the user variable
 	if err2 := result.Decode(&user); err2 != nil {
+		c.Status(fiber.ErrBadRequest.Code)
 		return &models.BaseResponse{
 			Success:      false,
 			ResponseType: "UNKNOWN_ERROR",
@@ -46,6 +52,7 @@ func (*twitterClone) ResetPassword(c *fiber.Ctx, req models.ResetPasswordRequest
 	// create JWT to be send in the email
 	token, err3 := CreateJWT(user.UUID, user.Account_ID, 15)
 	if err3 != nil {
+		c.Status(fiber.ErrBadRequest.Code)
 		return &models.BaseResponse{
 			Success:      false,
 			ResponseType: "UNKNOWN_ERROR",
