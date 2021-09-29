@@ -103,6 +103,24 @@ func main() {
 		return nil
 	})
 
+	auth.Post("/resetPassword/newPassword", func(c *fiber.Ctx) error {
+		c.Context().SetContentType("application/jsons")
+
+		req := models.SetNewPasswordRequest{}
+		if err := UnmarshalRequest(&req, c); err != nil {
+			return err
+		}
+
+		// run the set new password logic
+		resp := svc.SetNewPassword(c, req)
+
+		if err := MarshalResponseAndSetBody(resp, c); err != nil {
+			return err
+		}
+
+		return nil
+	})
+
 	user := v1.Group("/user") // api/v1/user/
 	user.Delete("/delete", func(c *fiber.Ctx) error {
 

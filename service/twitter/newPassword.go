@@ -30,7 +30,7 @@ func (*twitterClone) NewPassword(c *fiber.Ctx) *models.BaseResponse {
 	// 3) send the JWT to the frontend
 	// 4) get the new password from the frontend along with the JWT and update the password
 
-	err := c.Redirect("http://localhost:3000/auth?token:" + token)
+	err := c.Redirect("http://localhost:3000/api/v1/auth/resetPassword/newPassword?token:" + token)
 	if err != nil {
 		return &models.BaseResponse{
 			Success:      false,
