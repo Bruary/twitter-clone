@@ -11,6 +11,10 @@ type SignInResponse struct {
 }
 
 type ResetPasswordRequest struct {
-	BaseResponse
 	Email string `json:"email"`
+}
+
+type SetNewPasswordRequest struct {
+	BaseRequest
+	Password string `json:"password"`
 }
