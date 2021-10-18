@@ -1,6 +1,7 @@
 package twitter
 
 import (
+	"os"
 	"time"
 
 	"github.com/Bruary/twitter-clone/service/models"
@@ -20,6 +21,8 @@ func CreateJWT(userUUID string, accountID string, validDurationMinutes time.Dura
 
 	// declaring the token with the method used for signing along with the claims§
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+	jwtKey := os.Getenv("access_secret")
 
 	// Create the JWT string
 	tokenString, err4 := token.SignedString(jwtKey)

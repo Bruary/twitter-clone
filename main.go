@@ -9,18 +9,36 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
+	"log"
 
 	"github.com/Bruary/twitter-clone/db"
 	"github.com/Bruary/twitter-clone/service/models"
 	"github.com/Bruary/twitter-clone/service/twitter"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/joho/godotenv"
 )
 
-func main() {
+func init() {
 
 	// Connect to the db
 	db.SetUpDBConnection()
+
+	// Connect to cache
+	db.SetUpCacheConnection()
+
+	// Load the .env file
+	errEnv := godotenv.Load(".env")
+	if errEnv != nil {
+		log.Fatalf("Error loading .env file")
+	}
+
+	fmt.Println(".env loaded!")
+
+}
+
+func main() {
 
 	svc := twitter.NewTwitter()
 

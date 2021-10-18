@@ -6,6 +6,7 @@ import (
 	"log"
 
 	models "github.com/Bruary/twitter-clone/service/models"
+	"github.com/go-redis/redis/v8"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -15,6 +16,7 @@ var dbConn *mongo.Database
 var UsersCol *mongo.Collection
 var TweetsCol *mongo.Collection
 var FollowersCol *mongo.Collection
+var RedisClient *redis.Client
 
 func SetUpDBConnection() {
 
@@ -25,6 +27,21 @@ func SetUpDBConnection() {
 	UsersCol = ConnectToUsersCol()
 	TweetsCol = ConnectToTweetsCol()
 	FollowersCol = ConnectToFollowersCol()
+}
+
+func SetUpCacheConnection() {
+
+	// establish a connection to redis
+	RedisClient = redis.NewClient(&redis.Options{
+		Addr: "localhost:6379",
+	})
+
+	_, err := RedisClient.Ping(context.Background()).Result()
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println("Connected to Redis!")
 }
 
 func GetDBConn() *mongo.Database {

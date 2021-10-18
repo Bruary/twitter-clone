@@ -1,17 +1,17 @@
 package twitter
 
 import (
+	"os"
 	"time"
 
 	"github.com/Bruary/twitter-clone/db"
 	"github.com/Bruary/twitter-clone/service/models"
 	"github.com/Bruary/twitter-clone/validate"
 	"github.com/dgrijalva/jwt-go"
+
 	"github.com/gofiber/fiber/v2"
 	"golang.org/x/crypto/bcrypt"
 )
-
-var jwtKey = []byte("White_Yasmin")
 
 // validate user and then sign in if creds are correct (send back token)
 func (s *twitterClone) SignIn(c *fiber.Ctx, req models.SignInRequest) *models.SignInResponse {
@@ -116,6 +116,9 @@ func (s *twitterClone) SignIn(c *fiber.Ctx, req models.SignInRequest) *models.Si
 
 	// If password matches then do the following
 
+	// get access secret from the env file
+	jwtKey := os.Getenv("access_secret")
+
 	// create the claims that will be used in the JWT token
 	claims := &models.Claims{
 		User_UUID:  userDocumentDecoded.UUID,
@@ -129,7 +132,7 @@ func (s *twitterClone) SignIn(c *fiber.Ctx, req models.SignInRequest) *models.Si
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
 	// Create the JWT string
-	tokenString, err4 := token.SignedString(jwtKey)
+	tokenString, err4 := token.SignedString([]byte(jwtKey))
 	if err4 != nil {
 
 		return &models.SignInResponse{
